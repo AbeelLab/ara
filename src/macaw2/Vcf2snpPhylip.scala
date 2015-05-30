@@ -1,4 +1,4 @@
-package macaw2
+//package macaw2
 
 import scala.io.Source
 import com.sun.org.apache.xalan.internal.xsltc.compiler.Sort
@@ -27,7 +27,7 @@ object Vcf2snpPhylip {
      * Key is position, value is a tuple (ref,alt).
      */
     def readVCF(f: File): Map[Int, (String, String)] = {
-      val directories = f.toString().mkString.split("""\\""")
+      val directories = f.toString().mkString.split("/")//For windows use ("""\\""")
       val map1 = Map(0 -> (directories(directories.size - 2), directories(directories.size - 1))) //Store directory name and VCF name as tuple with key 0
       object SNP { //Object SNP to match with line in VCF.
         def unapply(s: String): Option[(Int, String, String)] = {
@@ -60,7 +60,7 @@ object Vcf2snpPhylip {
       }
       def truncateName(s: (String, String)): String = {
         def truncate(name: String) = {
-          if (name.length > 10) name.substring(0, 10) //Cut name to length 10
+          if (name.length > 10) name.substring(name.length - 10, name.length - 1) //Cut name to length 10
           else { val res = "          ".substring(0, 10 - name.length); name + res } //Add spaces to length 10
         }
         if (s._2 == "reduced.vcf") truncate(s._1) //For Biek2012 and Blouin2012 files
