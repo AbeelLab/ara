@@ -6,7 +6,7 @@ import java.io.PrintWriter
 import java.io.File
 
 /**
- * @author Arlin
+ * This tool only reads VCFs that are named reduced.vcf
  */
 object Vcf2snpPhylip {
   val usage = "scala Vcf2snpPhylip.scala [directory] [output.phy] \nMultiple directories may be given as input and should be separated with spaces."
@@ -49,6 +49,7 @@ object Vcf2snpPhylip {
       val map2 = lineIterator.filterNot(_.startsWith("#")).filter(line => isSNP(line)).map(line => line match {
         case SNP(p, r, a) => (p -> (r, a))
       }).toMap
+      println(map1(0)._1 + ":\t" + map2.size + "\tSNPs") //Print in Console
       map1 ++ map2
     }
 
@@ -60,13 +61,9 @@ object Vcf2snpPhylip {
         val writer = new PrintWriter(f)
         try { op(writer) } finally { writer.close() }
       }
-      def truncateName(s: (String, String)): String = {
-        def truncate(name: String) = {
-          if (name.length > 10) name.substring(name.length - 10, name.length - 1) //Cut name to length 10
-          else { val res = "          ".substring(0, 10 - name.length); name + res } //Add spaces to length 10
-        }
-        if (s._2 == "reduced.vcf") truncate(s._1) //For Biek2012 and Blouin2012 files
-        else truncate(s._2.substring(0, s._2.indexOf("."))) //Filename without extension
+      def truncateName(s: String): String = {
+        if (s.length > 10) s.substring(s.length - 10, s.length) //Cut s to length 10
+        else { val res = "          ".substring(0, 10 - s.length); s + res } //Add spaces until length 10
       }
       //Concatenate all VCF maps into a total reference map with all SNP positions and the reference base as value, and remove the value with key 0.
       val refMap: Map[Int, String] = list.flatMap(m => m.map(snp => (snp._1, snp._2._1))).toMap - 0
@@ -76,8 +73,7 @@ object Vcf2snpPhylip {
         refMap.keysIterator.toList.sorted.foreach(pos => p.print(refMap(pos)))
         p.println
         for (snpMap <- list) {
-          val nameVCF = truncateName(snpMap(0)) //Get name of the VCF
-          println(nameVCF + ": " + snpMap.size + " SNPs") //Print in Console
+          val nameVCF = truncateName(snpMap(0)._1) //Get name of the VCF
           p.print(nameVCF) //Print in phy-file
           refMap.keysIterator.toList.sorted.foreach { pos =>
             if (!snpMap.contains(pos)) p.print(refMap(pos))
@@ -93,7 +89,7 @@ object Vcf2snpPhylip {
      */
     def listFiles(f: Any): List[File] = f match {
       case f: File if (f.isDirectory()) => f.listFiles.toList.flatMap(listFiles(_))
-      case f: File if (f.isFile() && f.getName.endsWith(".vcf")) => List(f)
+      case f: File if (f.isFile() && f.getName.equals("reduced.vcf")) => List(f)
       case _ => Nil
     }
 
