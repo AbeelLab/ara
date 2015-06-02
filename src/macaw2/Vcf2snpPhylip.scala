@@ -9,8 +9,8 @@ import java.io.File
  * @author Arlin
  */
 object Vcf2snpPhylip {
-  val usage = "scala Vcf2snpPhylip.scala [directory] [output.phy] \nMultiple directories may be given as input and should be separated with spaces." 
-  
+  val usage = "scala Vcf2snpPhylip.scala [directory] [output.phy] \nMultiple directories may be given as input and should be separated with spaces."
+
   def main(args: Array[String]) {
 
     /**
@@ -29,7 +29,7 @@ object Vcf2snpPhylip {
      * Key is position, value is a tuple (ref,alt).
      */
     def readVCF(f: File): Map[Int, (String, String)] = {
-      val directories = f.toString().mkString.split("""\\""")//For windows use ("""\\"""), for Linux ("/")
+      val directories = f.toString().mkString.split("/") //For windows use ("""\\"""), for Linux ("/")
       val map1 = Map(0 -> (directories(directories.size - 2), directories(directories.size - 1))) //Store directory name and VCF name as tuple with key 0
       object SNP { //Object SNP to match with line in VCF.
         def unapply(s: String): Option[(Int, String, String)] = {
@@ -68,19 +68,21 @@ object Vcf2snpPhylip {
         if (s._2 == "reduced.vcf") truncate(s._1) //For Biek2012 and Blouin2012 files
         else truncate(s._2.substring(0, s._2.indexOf("."))) //Filename without extension
       }
-      var phy = new File(phyName)
       //Concatenate all VCF maps into a total reference map with all SNP positions and the reference base as value, and remove the value with key 0.
       val refMap: Map[Int, String] = list.flatMap(m => m.map(snp => (snp._1, snp._2._1))).toMap - 0
-      printToFile(phy) { p => //Use p to write in phy-file
+      printToFile(new File(phyName)) { p => //Use p to write in phy-file
         p.println(list.length + 1 + " " + refMap.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
         p.print("H37RV_V5  ")
-        for (i <- refMap.keysIterator.toList.sorted) p.print(refMap(i))
+        refMap.keysIterator.toList.sorted.foreach(pos => p.print(refMap(pos)))
         p.println
         for (snpMap <- list) {
           val nameVCF = truncateName(snpMap(0)) //Get name of the VCF
           println(nameVCF + ": " + snpMap.size + " SNPs") //Print in Console
           p.print(nameVCF) //Print in phy-file
-          for (i <- refMap.keysIterator.toList.sorted) { if (!snpMap.contains(i)) { p.print(refMap(i)) } else p.print(snpMap(i)._2) }
+          refMap.keysIterator.toList.sorted.foreach { pos =>
+            if (!snpMap.contains(pos)) p.print(refMap(pos))
+            else p.print(snpMap(pos)._2)
+          }
           p.println
         }
       }
@@ -90,24 +92,24 @@ object Vcf2snpPhylip {
      * List all VCF files in the given directory.
      */
     def listFiles(f: Any): List[File] = f match {
-        case f: File if (f.isDirectory()) => f.listFiles.toList.flatMap(listFiles(_))
-        case f: File if (f.isFile() && f.getName.endsWith(".vcf")) => List(f)
-        case _ => Nil
-      }
+      case f: File if (f.isDirectory()) => f.listFiles.toList.flatMap(listFiles(_))
+      case f: File if (f.isFile() && f.getName.endsWith(".vcf")) => List(f)
+      case _ => Nil
+    }
 
     /**
-     * Extract HQ SNPs and store in Map[Int, (String, String)] for each VCF.
+     * Extract HQ SNPs, store in Map[Int, (String, String)] for each VCF and print information in a phylip format.
      */
-      args.length match {
-        case n if (n > 1) => time {
-          val fileList = (0 to n - 2).toList.flatMap(idx => listFiles(new File(args(idx))))
-          val mapList = fileList.map(file => readVCF(file))
-          writeToFile(args(n - 1), mapList)
-          println("Total of " + mapList.length + " files in all given directories.")
-          println("Output: " + args(n-1))
-        }
-        case _ => println(usage)
+    args.length match {
+      case n if (n > 1) => time {
+        val fileList = (0 to n - 2).toList.flatMap(idx => listFiles(new File(args(idx))))
+        val mapList = fileList.map(file => readVCF(file))
+        writeToFile(args(n - 1), mapList)
+        println("Total of " + mapList.length + " files in all given directories.")
+        println("Output: " + args(n - 1))
       }
+      case _ => println(usage)
+    }
   }
 
 }
