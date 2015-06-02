@@ -9,6 +9,8 @@ import java.io.File
  * @author Arlin
  */
 object Vcf2snpPhylip {
+  val usage = "scala Vcf2snpPhylip.scala [directory] [output.phy] \nMultiple directories may be given as input and should be separated with spaces." 
+  
   def main(args: Array[String]) {
 
     /**
@@ -27,7 +29,7 @@ object Vcf2snpPhylip {
      * Key is position, value is a tuple (ref,alt).
      */
     def readVCF(f: File): Map[Int, (String, String)] = {
-      val directories = f.toString().mkString.split("/")//For windows use ("""\\""")
+      val directories = f.toString().mkString.split("""\\""")//For windows use ("""\\"""), for Linux ("/")
       val map1 = Map(0 -> (directories(directories.size - 2), directories(directories.size - 1))) //Store directory name and VCF name as tuple with key 0
       object SNP { //Object SNP to match with line in VCF.
         def unapply(s: String): Option[(Int, String, String)] = {
@@ -85,29 +87,27 @@ object Vcf2snpPhylip {
     }
 
     /**
-     * Ask files or directories to read an return a list of directories/files.
+     * List all VCF files in the given directory.
      */
-    def askFiles(): List[List[File]] = {
-      def listFiles(f: Any): List[File] = f match {
-        case f: File if (f.isDirectory()) => f.listFiles().toList.flatMap(listFiles(_))
+    def listFiles(f: Any): List[File] = f match {
+        case f: File if (f.isDirectory()) => f.listFiles.toList.flatMap(listFiles(_))
         case f: File if (f.isFile() && f.getName.endsWith(".vcf")) => List(f)
         case _ => Nil
       }
-      val f = listFiles(new File(readLine("Which directory or file?")))
-      print("Add another directory or file (y/n)?")
-      if (readBoolean) f :: askFiles else { println("Reading files..."); f :: Nil }
-    }
 
     /**
      * Extract HQ SNPs and store in Map[Int, (String, String)] for each VCF.
      */
-    time {
-      val name = Console.readLine("Give the name of the file to write to without the .phy extension.") + ".phy"
-      val listVCFs: List[Map[Int, (String, String)]] = askFiles flatMap (dir => dir map (file => readVCF(file)))
-      writeToFile(name, listVCFs)
-      println("Total of " + listVCFs.length + " files in all given directories.")
-      println(name + " saved in workspace.")
-    }
+      args.length match {
+        case n if (n > 1) => time {
+          val fileList = (0 to n - 2).toList.flatMap(idx => listFiles(new File(args(idx))))
+          val mapList = fileList.map(file => readVCF(file))
+          writeToFile(args(n - 1), mapList)
+          println("Total of " + mapList.length + " files in all given directories.")
+          println("Output: " + args(n-1))
+        }
+        case _ => println(usage)
+      }
   }
 
 }
