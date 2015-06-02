@@ -6,7 +6,7 @@ import java.io.PrintWriter
  * Script to write paths to VCFs in a text file. The output may be used for the script "vcf2snpAlignment.pl".
  */
 object WriteVCFpaths {
-  val usage = "usage: scala WriteVCFpaths.scala [directory] [output.txt]" 
+  val usage = "usage: scala WriteVCFpaths.scala [directory] [output.txt] \nMultiple directories may be given as input and should be separated with spaces." 
   
   def main(args: Array[String]) {    
     def printToFile(f: File)(op: PrintWriter => Unit) {
@@ -20,9 +20,10 @@ object WriteVCFpaths {
     }
     
     args.length match {
-      case 2 => {
-        val list = listFiles(new File(args(0)))
-        printToFile(new File(args(1))) { p => list.foreach(f => p.println(f)) }
+      case n if (n > 1) => {
+        val list = (0 to n-2).toList.flatMap(idx => listFiles(new File(args(idx))))
+        printToFile(new File(args(n-1))) { p => list.foreach(file => p.println(file))          
+        }
       }
       case _ => println(usage)
     }
