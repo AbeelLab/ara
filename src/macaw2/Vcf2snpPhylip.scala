@@ -62,7 +62,7 @@ object Vcf2snpPhylip {
         try { op(writer) } finally { writer.close() }
       }
       def truncateName(s: String): String = {
-        if (s.length > 10) s.substring(s.length - 10, s.length) //Cut s to length 10
+        if (s.length > 10) s.substring(s.length - 9, s.length) + " " //Cut s to length 10
         else { val res = "          ".substring(0, 10 - s.length); s + res } //Add spaces until length 10
       }
       //Concatenate all VCF maps into a total reference map with all SNP positions and the reference base as value, and remove the value with key 0.
