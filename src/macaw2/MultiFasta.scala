@@ -27,10 +27,21 @@ object MultiFasta {
       case f: File if (f.isFile() && f.getName.equals("pilon.fasta")) => List(f)
       case _ => Nil
     }
+    
+    /**
+     * Elapsed time function
+     */
+    def time[R](block: => R): R = {
+      val t0 = System.currentTimeMillis()
+      val result = block // call-by-name
+      val t1 = System.currentTimeMillis()
+      println("Elapsed time: " + (t1 - t0) + "ms")
+      result
+    }
 
     if (args.length < 1) {
       println(usage)
-    } else {
+    } else time {
       val list = (0 to args.length - 2).toList.flatMap(arg => listFiles(new File(args(arg))))
       printToFile(new File(args(args.length - 1))) { p =>
         list.foreach { f =>
