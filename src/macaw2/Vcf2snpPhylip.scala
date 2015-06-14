@@ -29,8 +29,7 @@ object Vcf2snpPhylip {
      * Key is position, value is a tuple (ref,alt).
      */
     def readVCF(f: File): Map[Int, (String, String)] = {
-      val directories = f.toString().mkString.split("/") //For windows use ("""\\"""), for Linux ("/")
-      val map1 = Map(0 -> (directories(directories.size - 2), directories(directories.size - 1))) //Store directory name and VCF name as tuple with key 0
+      val map1 = Map(0 -> (f.getParentFile.getName, f.getName)) //Store directory name and VCF name as tuple with key 0
       object SNP { //Object SNP to match with line in VCF.
         def unapply(s: String): Option[(Int, String, String)] = {
           val arr = s.mkString.split("\t")
