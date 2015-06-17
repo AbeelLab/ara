@@ -13,9 +13,7 @@ object Vcf2snpPhylip {
 
   def main(args: Array[String]) {
 
-    /**
-     * Elapsed time function
-     */
+    /** Elapsed time function */
     def time[R](block: => R): R = {
       val t0 = System.currentTimeMillis()
       val result = block // call-by-name
@@ -24,83 +22,77 @@ object Vcf2snpPhylip {
       result
     }
 
-    /**
-     * Function to read VCF-file and return a map with SNPs.
-     * Key is position, value is a tuple (ref,alt).
-     */
-    def readVCF(f: File): Map[Int, (String, String)] = {
-      val map1 = Map(0 -> (f.getParentFile.getName, f.getName)) //Store directory name and VCF name as tuple with key 0
-      object SNP { //Object SNP to match with line in VCF.
-        def unapply(s: String): Option[(Int, String, String)] = {
-          val arr = s.mkString.split("\t")
-          val r = arr(3)
-          val a = arr(4)
-          if (arr(6) == "PASS" && r.length() == 1 && a.length() == 1)
-            Some((arr(1).toInt, r, a))
-          else None
-        }
-      }
-      def isSNP(line: String): Boolean = line match {
-        case SNP(p, r, a) => true
-        case _ => false
-      }
-      val lineIterator = Source.fromFile(f).getLines()
-      val map2 = lineIterator.filterNot(_.startsWith("#")).filter(line => isSNP(line)).map(line => line match {
-        case SNP(p, r, a) => (p -> (r, a))
-      }).toMap
-      println(map1(0)._1 + ":\t" + map2.size + "\tSNPs") //Print in Console
-      map1 ++ map2
-    }
-
-    /**
-     *  Write to file
-     */
-    def writeToFile(phyName: String, list: List[Map[Int, (String, String)]]) = {
-      def printToFile(f: File)(op: PrintWriter => Unit) { //Function to write in new textfile. */
-        val writer = new PrintWriter(f)
-        try { op(writer) } finally { writer.close() }
-      }
-      def truncateName(s: String): String = {
-        if (s.length > 10) s.substring(s.length - 9, s.length) + " " //Cut s to length 10
-        else { val res = "          ".substring(0, 10 - s.length); s + res } //Add spaces until length 10
-      }
-      //Concatenate all VCF maps into a total reference map with all SNP positions and the reference base as value, and remove the value with key 0.
-      val refMap: Map[Int, String] = list.flatMap(m => m.map(snp => (snp._1, snp._2._1))).toMap - 0
-      printToFile(new File(phyName)) { p => //Use p to write in phy-file
-        p.println(list.length + 1 + " " + refMap.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
-        p.print("H37RV_V5  ")
-        refMap.keysIterator.toList.sorted.foreach(pos => p.print(refMap(pos)))
-        p.println
-        for (snpMap <- list) {
-          val nameVCF = truncateName(snpMap(0)._1) //Get name of the VCF
-          p.print(nameVCF) //Print in phy-file
-          refMap.keysIterator.toList.sorted.foreach { pos =>
-            if (!snpMap.contains(pos)) p.print(refMap(pos))
-            else p.print(snpMap(pos)._2)
-          }
-          p.println
-        }
+    /** Object SNP to match with line in VCF. */
+    object SNP {
+      def unapply(s: String): Option[(Int, String, String)] = {
+        val arr = s.mkString.split("\t")
+        val r = arr(3)
+        val a = arr(4)
+        if (arr(6) == "PASS" && r.length() == 1 && a.length() == 1)
+          Some((arr(1).toInt, r, a))
+        else None
       }
     }
 
-    /**
-     * List all VCF files in the given directory.
-     */
+    /** Determine if line represents a SNP. */
+    def isSNP(line: String): Boolean = line match {
+      case SNP(p, r, a) => true
+      case _ => false
+    }
+
+    /** Get all SNP positions */
+    def getPositions(fList: List[File]): Set[(Int, String)] = {
+      def getPos(file: File): List[(Int, String)] = {
+        val snpIterator = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(isSNP(_))
+        snpIterator.map(_ match {
+          case SNP(p, r, a) => (p, r)
+        }).toList
+      }
+      fList.flatMap(getPos(_)).toSet
+    }
+
+    /** Function to write in new textfile. */
+    def printToFile(f: File)(op: PrintWriter => Unit) {
+      val writer = new PrintWriter(f)
+      try { op(writer) } finally { writer.close() }
+    }
+    
+    /** Return new name of samples with 9 characters. */
+    def truncateName(s: String): String = {
+      if (s.length > 10) s.substring(s.length - 9, s.length) + " " //Cut s to length 10
+      else { val res = "          ".substring(0, 10 - s.length); s + res } //Add spaces until length 10
+    }
+
+     /** List all VCF files in the given directory. */
     def listFiles(f: Any): List[File] = f match {
       case f: File if (f.isDirectory()) => f.listFiles.toList.flatMap(listFiles(_))
       case f: File if (f.isFile() && f.getName.equals("reduced.vcf")) => List(f)
       case _ => Nil
     }
 
-    /**
-     * Extract HQ SNPs, store in Map[Int, (String, String)] for each VCF and print information in a phylip format.
-     */
+    /** List all VCFs from the given directories, get all SNP positions, and print SNP sequence of each sample. */
     args.length match {
       case n if (n > 1) => time {
         val fileList = (0 to n - 2).toList.flatMap(idx => listFiles(new File(args(idx))))
-        val mapList = fileList.map(file => readVCF(file))
-        writeToFile(args(n - 1), mapList)
-        println("Total of " + mapList.length + " files in all given directories.")
+        val refList = getPositions(fileList).toList.sorted
+        printToFile(new File(args(n - 1))) { p =>
+          p.println(fileList.size + 1 + " " + refList.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
+          p.print("H37RV_V5  ")
+          refList.foreach(i => p.print(i._2))
+          p.println
+          fileList.foreach { file =>
+            val name = file.getParentFile.getName
+            p.print(truncateName(name))
+            val snpIterator = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(isSNP(_))
+            val snpMap = snpIterator.map( _ match {
+              case SNP(p, r, a) => (p, a) 
+            }).toMap
+            println(name + ":\t" + snpMap.size + "\tSNPs")
+            val snpSeq = (refList.map(pos => if(snpMap.contains(pos._1)) snpMap(pos._1) else pos._2)).mkString
+            p.println(snpSeq)
+          }
+        }
+        println("Total of " + fileList.size + " files in all given directories.")
         println("Output: " + args(n - 1))
       }
       case _ => println(usage)
