@@ -1,4 +1,4 @@
-package macaw2
+//package macaw2
 
 import scala.io.Source
 import com.sun.org.apache.xalan.internal.xsltc.compiler.Sort
@@ -87,7 +87,7 @@ object Vcf2snpPhylip {
               case SNP(p, r, a) => (p, a) 
             }).toMap
             val nonSnpSet = (Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(isSNP(_)).map(line => line.split("\t")(1).toInt)).toSet
-            println(name + ":\t" + snpMap.size + "\tSNPs,\t" + nonSnpSet.size + "\tnon-SNP variants")
+            println(name + ":\t" + snpMap.size + "\tSNPs")
             val snpSeq = (refList.map(pos =>
               if (snpMap.contains(pos._1)) snpMap(pos._1)
               else if (nonSnpSet.contains(pos._1)) "N"
