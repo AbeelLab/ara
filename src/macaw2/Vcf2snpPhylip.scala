@@ -6,10 +6,10 @@ import java.io.PrintWriter
 import java.io.File
 
 /**
- * This tool only reads VCFs that are named reduced.vcf
+ * This tool reads VCFs from the path file, and returns a SNP phy-file.
  */
 object Vcf2snpPhylip {
-  val usage = "scala Vcf2snpPhylip.scala [directory] [output.phy] \nMultiple directories may be given as input and should be separated with spaces."
+  val usage = "scala Vcf2snpPhylip.scala [pathfile] [output.phy]"
 
   def main(args: Array[String]) {
 
@@ -41,14 +41,14 @@ object Vcf2snpPhylip {
     }
 
     /** Get all SNP positions */
-    def getPositions(fList: List[File]): Set[(Int, String)] = {
+    def getPositions(fList: List[File]): Map[Int, String] = {
       def getPos(file: File): List[(Int, String)] = {
         val snpIterator = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(isSNP(_))
         snpIterator.map(_ match {
           case SNP(p, r, a) => (p, r)
         }).toList
       }
-      fList.flatMap(getPos(_)).toSet
+      fList.flatMap(getPos(_)).toMap
     }
 
     /** Function to write in new textfile. */
@@ -63,40 +63,35 @@ object Vcf2snpPhylip {
       else { val res = "          ".substring(0, 10 - s.length); s + res } //Add spaces until length 10
     }
 
-     /** List all VCF files in the given directory. */
-    def listFiles(f: Any): List[File] = f match {
-      case f: File if (f.isDirectory()) => f.listFiles.toList.flatMap(listFiles(_))
-      case f: File if (f.isFile() && f.getName.equals("reduced.vcf")) => List(f)
-      case _ => Nil
-    }
-
-    /** List all VCFs from the given directories, get all SNP positions, and print SNP sequence of each sample. */
+    /** List all VCFs from the pathfile, get all SNP positions, and print SNP sequence of each sample. */
     args.length match {
-      case n if (n > 1) => time {
-        val fileList = (0 to n - 2).toList.flatMap(idx => listFiles(new File(args(idx))))
-        val refList = getPositions(fileList).toList.sorted
-        printToFile(new File(args(n - 1))) { p =>
-          p.println(fileList.size + 1 + " " + refList.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
+      case 2 => time {
+        val fileList = Source.fromFile(new File(args(0))).getLines.map(new File(_)).toList
+        val refMap = getPositions(fileList) // Map with ref. positions and bases
+        val refPositions = refMap.unzip._1.toList.sorted // Sorted list with ref. positions
+        printToFile(new File(args(1))) { p =>
+          p.println(fileList.size + 1 + " " + refMap.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
           p.print("H37RV_V5  ")
-          refList.foreach(i => p.print(i._2))
-          p.println
-          fileList.foreach { file =>
+          refPositions.foreach(pos => p.print(refMap(pos)))
+          fileList.foreach { file => // for each file print sequence
+            p.println
             val name = file.getParentFile.getName
             p.print(truncateName(name))
             val snpMap = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(isSNP(_)).map( _ match {
               case SNP(p, r, a) => (p, a) 
             }).toMap
-            val nonSnpSet = (Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(isSNP(_)).map(line => line.split("\t")(1).toInt)).toSet
+            val nonSnpSet = (Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(isSNP(_)).filter(line => 
+              refPositions.contains(line.split("\t")(1).toInt)).map(line => line.split("\t")(1).toInt)).toSet
             println(name + ":\t" + snpMap.size + "\tSNPs")
-            val snpSeq = (refList.map(pos =>
-              if (snpMap.contains(pos._1)) snpMap(pos._1)
-              else if (nonSnpSet.contains(pos._1)) "N"
-              else pos._2)).mkString
-            p.println(snpSeq)
+            refPositions.foreach(pos =>
+              if (snpMap.contains(pos)) p.print(snpMap(pos))
+              else if (nonSnpSet.contains(pos)) p.print("N")
+              else p.print(refMap(pos))
+            )
           }
         }
-        println("Total of " + fileList.size + " files in all given directories.")
-        println("Output: " + args(n - 1))
+        println("Total of " + fileList.size + " VCFs.")
+        println("Output: " + args(1))
       }
       case _ => println(usage)
     }
