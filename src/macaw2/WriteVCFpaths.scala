@@ -23,7 +23,7 @@ object WriteVCFpaths {
     
     args.length match {
       case n if (n > 1) => {
-        val list = (0 to n-2).toList.flatMap(idx => listFiles(new File(args(idx))))
+        val list = (0 to n-2).toList.flatMap(idx => listFiles(new File(args(idx)))).sortBy(file => file.getParentFile.getName)
         printToFile(new File(args(n-1))) { p => list.foreach(file => p.println(file))          
         }
       }
