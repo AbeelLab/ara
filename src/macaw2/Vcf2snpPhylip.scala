@@ -1,4 +1,4 @@
-package macaw2
+//package macaw2
 
 import scala.io.Source
 import com.sun.org.apache.xalan.internal.xsltc.compiler.Sort
@@ -44,6 +44,7 @@ object Vcf2snpPhylip {
     def getPositions(fList: List[File]): Map[Int, String] = {
       def getPos(file: File): List[(Int, String)] = {
         val snpIterator = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(isSNP(_))
+        println(file.getParentFile.getName + ":\t" + snpIterator.size + "\tSNPs")
         snpIterator.map(_ match {
           case SNP(p, r, a) => (p, r)
         }).toList
@@ -68,6 +69,7 @@ object Vcf2snpPhylip {
       case 2 => time {
         val fileList = Source.fromFile(new File(args(0))).getLines.map(new File(_)).toList
         val refMap = getPositions(fileList) // Map with ref. positions and bases
+        println("Writing phy-file...")
         printToFile(new File(args(1))) { p =>
           p.println(fileList.size + 1 + " " + refMap.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
           p.print("H37RV_V5  ")
@@ -80,7 +82,6 @@ object Vcf2snpPhylip {
               if (isSNP(line)) line match {case SNP(p, r, a) => (p, a)}
               else (line.split("\t")(1).toInt, "N")
             ).toMap
-            println(name + ":\t" + snpMap.size + "\tSNPs")
             refMap.keysIterator.toList.sorted.foreach(pos =>
               if (snpMap.contains(pos)) p.print(snpMap(pos))
               else p.print(refMap(pos))
