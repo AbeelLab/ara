@@ -1,4 +1,4 @@
-//package macaw2
+package macaw2
 
 import scala.io.Source
 import com.sun.org.apache.xalan.internal.xsltc.compiler.Sort
@@ -39,12 +39,17 @@ object Vcf2snpPhylip {
       case SNP(p, r, a) => true
       case _ => false
     }
+    
+    def invalidSite(line: String): Boolean = {
+      val arr = line.split("\t")
+      if (arr(4) == "." && arr(6) == "PASS") true
+      else false
+    }
 
     /** Get all SNP positions */
     def getPositions(fList: List[File]): Map[Int, String] = {
       def getPos(file: File): List[(Int, String)] = {
-        val snpIterator = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(isSNP(_))
-        println(file.getParentFile.getName + ":\t" + snpIterator.size + "\tSNPs")
+        val snpIterator = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(invalidSite(_)).filter(isSNP(_))
         snpIterator.map(_ match {
           case SNP(p, r, a) => (p, r)
         }).toList
@@ -78,14 +83,15 @@ object Vcf2snpPhylip {
             p.println
             val name = file.getParentFile.getName
             p.print(truncateName(name))
-            val snpMap = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(line => refMap.contains(line.split("\t")(1).toInt)).map(line =>
-              if (isSNP(line)) line match {case SNP(p, r, a) => (p, a)}
-              else (line.split("\t")(1).toInt, "N")
-            ).toMap
+            val (snpMapIt, nonSnpSetIt) = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(invalidSite(_)).partition(isSNP(_))
+            val snpMap = snpMapIt.map(line => line match {case SNP(p, r, a) => (p, a)}).toMap
+            val nonSnpSet = nonSnpSetIt.filter(line => refMap.contains(line.split("\t")(1).toInt))
             refMap.keysIterator.toList.sorted.foreach(pos =>
               if (snpMap.contains(pos)) p.print(snpMap(pos))
+              else if (nonSnpSet.contains(pos)) p.print("N")
               else p.print(refMap(pos))
             )
+            println(name + ":\t" + snpMap.size + "\tSNPs")
           }
         }
         println("Total of " + fileList.size + " VCFs.")
