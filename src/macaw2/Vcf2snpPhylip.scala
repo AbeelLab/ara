@@ -1,4 +1,4 @@
-//package macaw2
+package macaw2
 
 import scala.io.Source
 import com.sun.org.apache.xalan.internal.xsltc.compiler.Sort
@@ -57,35 +57,32 @@ object Vcf2snpPhylip {
       try { op(writer) } finally { writer.close() }
     }
     
-    /** Return new name of samples with 9 characters. */
+    /** Return new name of samples with 9 characters and a space. */
     def truncateName(s: String): String = {
       if (s.length > 10) s.substring(s.length - 9, s.length) + " " //Cut s to length 10
       else { val res = "          ".substring(0, 10 - s.length); s + res } //Add spaces until length 10
     }
 
-    /** List all VCFs from the pathfile, get all SNP positions, and print SNP sequence of each sample. */
+    /** List all VCFs from the path file, get all SNP positions, and print SNP sequence of each sample. */
     args.length match {
       case 2 => time {
         val fileList = Source.fromFile(new File(args(0))).getLines.map(new File(_)).toList
         val refMap = getPositions(fileList) // Map with ref. positions and bases
-        val refPositions = refMap.unzip._1.toList.sorted // Sorted list with ref. positions
         printToFile(new File(args(1))) { p =>
           p.println(fileList.size + 1 + " " + refMap.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
           p.print("H37RV_V5  ")
-          refPositions.foreach(pos => p.print(refMap(pos)))
+          refMap.keysIterator.toList.sorted.foreach(pos => p.print(refMap(pos)))
           fileList.foreach { file => // for each file print sequence
             p.println
             val name = file.getParentFile.getName
             p.print(truncateName(name))
-            val snpMap = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(isSNP(_)).map( _ match {
-              case SNP(p, r, a) => (p, a) 
-            }).toMap
-            val nonSnpSet = (Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(isSNP(_)).filter(line => 
-              refPositions.contains(line.split("\t")(1).toInt)).map(line => line.split("\t")(1).toInt)).toSet
+            val snpMap = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(line => refMap.contains(line.split("\t")(1).toInt)).map(line =>
+              if (isSNP(line)) line match {case SNP(p, r, a) => (p, a)}
+              else (line.split("\t")(1).toInt, "N")
+            ).toMap
             println(name + ":\t" + snpMap.size + "\tSNPs")
-            refPositions.foreach(pos =>
+            refMap.keysIterator.toList.sorted.foreach(pos =>
               if (snpMap.contains(pos)) p.print(snpMap(pos))
-              else if (nonSnpSet.contains(pos)) p.print("N")
               else p.print(refMap(pos))
             )
           }
