@@ -83,9 +83,11 @@ object Vcf2snpPhylip {
             p.println
             val name = file.getParentFile.getName
             p.print(truncateName(name))
-            val (snpMapIt, nonSnpSetIt) = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(invalidSite(_)).partition(isSNP(_))
-            val snpMap = snpMapIt.map(line => line match {case SNP(p, r, a) => (p, a)}).toMap
-            val nonSnpSet = nonSnpSetIt.filter(line => refMap.contains(line.split("\t")(1).toInt))
+            val snpMap = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(isSNP(_)).map( _ match {
+              case SNP(p, r, a) => (p, a) 
+            }).toMap
+            val nonSnpSet = (Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(isSNP(_)).filter(line => 
+              refMap.contains(line.split("\t")(1).toInt)).map(line => line.split("\t")(1).toInt)).toSet
             refMap.keysIterator.toList.sorted.foreach(pos =>
               if (snpMap.contains(pos)) p.print(snpMap(pos))
               else if (nonSnpSet.contains(pos)) p.print("N")
