@@ -57,7 +57,7 @@ object Vcf2snpPhylip {
       fList.flatMap(getPos(_)).toMap
     }
 
-    /** Function to write in new textfile. */
+    /** Function to write in new text file. */
     def printToFile(f: File)(op: PrintWriter => Unit) {
       val writer = new PrintWriter(f)
       try { op(writer) } finally { writer.close() }
@@ -82,18 +82,22 @@ object Vcf2snpPhylip {
           fileList.foreach { file => // for each file print sequence
             p.println
             val name = file.getParentFile.getName
-            p.print(truncateName(name))
             val snpMap = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(isSNP(_)).map( _ match {
               case SNP(p, r, a) => (p, a) 
             }).toMap
             val nonSnpSet = (Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(isSNP(_)).filter(line => 
               refMap.contains(line.split("\t")(1).toInt)).map(line => line.split("\t")(1).toInt)).toSet
-            refMap.keysIterator.toList.sorted.foreach(pos =>
-              if (snpMap.contains(pos)) p.print(snpMap(pos))
-              else if (nonSnpSet.contains(pos)) p.print("N")
-              else p.print(refMap(pos))
-            )
-            println(name + ":\t" + snpMap.size + "\tSNPs")
+            val snpSeq = refMap.keysIterator.toList.sorted.map(pos => 
+              if (snpMap.contains(pos)) snpMap(pos)
+              else if (nonSnpSet.contains(pos)) "N"
+              else refMap(pos)
+            ).mkString
+            if (snpSeq.filter(_ == 'N').size.toFloat / refMap.size < 0.05) {
+              p.print(truncateName(name))
+              p.print(snpSeq)
+              println(name + ":\t" + snpMap.size + "\tSNPs")
+            }
+            else println("Number of Ns in the SNP sequence of " + truncateName(name) + " is greater than or equal to 0.05 and is excluded.")
           }
         }
         println("Total of " + fileList.size + " VCFs.")
