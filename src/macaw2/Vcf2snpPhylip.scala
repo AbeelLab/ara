@@ -75,6 +75,7 @@ object Vcf2snpPhylip {
         val fileList = Source.fromFile(new File(args(0))).getLines.map(new File(_)).toList
         val refMap = getPositions(fileList) // Map with ref. positions and bases
         var excludesCount = 0
+        var excludeList: List[(String, Int)] = List()
         println("Writing phy-file...")
         printToFile(new File(args(1))) { p =>
           p.println(fileList.size + 1 + " " + refMap.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
@@ -92,18 +93,20 @@ object Vcf2snpPhylip {
               else if (nonSnpSet.contains(pos)) "N"
               else refMap(pos)
             ).mkString
-            if (snpSeq.filter(_ == 'N').size.toFloat / refMap.size < 0.05) { //If number of N in sequence is less than 5% of total sequence.
-              p.println
-              p.print(truncateName(name) + snpSeq)
-              println(name + ":\t" + snpMap.size + "\tSNPs")
-            }
-            else {
-              println("Number of Ns in the SNP sequence of " + truncateName(name) + " is greater than or equal to 0.05 and is excluded.")
-              excludesCount = excludesCount + 1
+            p.println
+            p.print(truncateName(name) + snpSeq)
+            println(name + ":\t" + snpMap.size + "\tSNPs")
+            val ncount = snpSeq.filter(_ == 'N').size
+            if (ncount.toFloat / refMap.size > 0.05) { //If number of N in sequence is more than 5% of total sequence.
+              excludesCount = excludesCount + 1    
+              (name, ncount) :: excludeList
             }
           }
         }
-        println("Total of " + fileList.size + " VCFs read, of which " + excludesCount + " files are excluded.")
+        println("Total of " + fileList.size + " VCFs read.")
+        println("WARNING: there are " + excludesCount + " sequences with more than 5% Ns.")
+        println("Consider rerunning this tool without the samples:")
+        excludeList.foreach(x => println(x._1 + " has " + x._2 + "Ns."))
         println("Output: " + args(1))
       }
       case _ => println(usage)
