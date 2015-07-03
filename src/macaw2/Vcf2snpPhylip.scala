@@ -1,4 +1,4 @@
-//package macaw2
+package macaw2
 
 import scala.io.Source
 import com.sun.org.apache.xalan.internal.xsltc.compiler.Sort
@@ -74,13 +74,13 @@ object Vcf2snpPhylip {
       case 2 => time {
         val fileList = Source.fromFile(new File(args(0))).getLines.map(new File(_)).toList
         val refMap = getPositions(fileList) // Map with ref. positions and bases
+        var excludesCount = 0
         println("Writing phy-file...")
         printToFile(new File(args(1))) { p =>
           p.println(fileList.size + 1 + " " + refMap.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
           p.print("H37RV_V5  ")
           refMap.keysIterator.toList.sorted.foreach(pos => p.print(refMap(pos)))
           fileList.foreach { file => // for each file print sequence
-            p.println
             val name = file.getParentFile.getName
             val snpMap = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filter(isSNP(_)).map( _ match {
               case SNP(p, r, a) => (p, a) 
@@ -92,15 +92,18 @@ object Vcf2snpPhylip {
               else if (nonSnpSet.contains(pos)) "N"
               else refMap(pos)
             ).mkString
-            if (snpSeq.filter(_ == 'N').size.toFloat / refMap.size < 0.05) {
-              p.print(truncateName(name))
-              p.print(snpSeq)
+            if (snpSeq.filter(_ == 'N').size.toFloat / refMap.size < 0.05) { //If number of N in sequence is less than 5% of total sequence.
+              p.println
+              p.print(truncateName(name) + snpSeq)
               println(name + ":\t" + snpMap.size + "\tSNPs")
             }
-            else println("Number of Ns in the SNP sequence of " + truncateName(name) + " is greater than or equal to 0.05 and is excluded.")
+            else {
+              println("Number of Ns in the SNP sequence of " + truncateName(name) + " is greater than or equal to 0.05 and is excluded.")
+              excludesCount = excludesCount + 1
+            }
           }
         }
-        println("Total of " + fileList.size + " VCFs.")
+        println("Total of " + fileList.size + " VCFs read, of which " + excludesCount + " files are excluded.")
         println("Output: " + args(1))
       }
       case _ => println(usage)
