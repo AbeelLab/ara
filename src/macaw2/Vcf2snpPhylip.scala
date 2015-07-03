@@ -1,4 +1,4 @@
-//package macaw2
+package macaw2
 
 import scala.io.Source
 import com.sun.org.apache.xalan.internal.xsltc.compiler.Sort
@@ -99,13 +99,14 @@ object Vcf2snpPhylip {
             val ncount = snpSeq.filter(_ == 'N').size
             if (ncount.toFloat / refMap.size > 0.05) { //If number of N in sequence is more than 5% of total sequence.
               excludesCount = excludesCount + 1    
-              (name, ncount) :: excludeList
+              excludeList = (name, ncount) :: excludeList
             }
           }
         }
         println("Total of " + fileList.size + " VCFs read.")
         println("WARNING: there are " + excludesCount + " sequences with more than 5% Ns.")
         println("Consider rerunning this tool without the samples:")
+        println(excludeList.size)
         excludeList.foreach(x => println(x._1 + " has " + x._2 + "Ns."))
         println("Output: " + args(1))
       }
