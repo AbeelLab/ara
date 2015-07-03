@@ -106,7 +106,7 @@ object Vcf2snpPhylip {
         println("Total of " + fileList.size + " VCFs read.")
         println("WARNING: there are " + excludesCount + " sequences with more than 5% Ns.")
         println("Consider rerunning this tool without these samples:")
-        excludeList.sorted.foreach(x => println(x._1 + " has " + x._2 + "Ns."))
+        excludeList.reverse.foreach(x => println(x._1 + " has " + x._2 + "Ns."))
         println("Output: " + args(1))
       }
       case _ => println(usage)
