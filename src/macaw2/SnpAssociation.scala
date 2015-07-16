@@ -47,7 +47,7 @@ object SnpAssociation {
       }
 
       /**
-       * Map of cluster Sets. Key = cluster name, value = List of sample names
+       * Map of clusters. Key = cluster name, value = List of sample names
        */
       val it = Source.fromFile(args(0)).getLines
       val ls = it.map { line => val l = line.split("\t"); (l(0), l(1)) }.toList
