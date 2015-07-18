@@ -76,12 +76,16 @@ object SnpAssociation {
         c match {
           case (cName, cList) => {
             println("cluster name: " + cName + ",\tsamples in cluster: " + cList)
-            val cSnpCounts = cList.flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size)
+            val cSnpCounts = cList.filterNot(_ == "H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size) // All SNPs in this cluster
             val notcNames = (clusters - cName).flatMap(s => s._2).toList // All other clusters names.
-            val notcSnpCounts = notcNames.flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size)
+            val notcSnpCounts = notcNames.filterNot(_ == "H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size)
             val cSNPs95 = cSnpCounts.filter(s => s match { case (snp, count) => (count > cList.size * 0.95) }) // SNPs in more than 95% of samples in cluster.
             val notcSNPs95 = notcSnpCounts.filter(s => s match { case (snp, count) => (count > notcNames.size * 0.95) }) // SNPs in more than 95% of samples in all other clusters.
-            (cName, cSNPs95.keysIterator.filter(snp => !notcSNPs95.contains(snp)).toList.sortBy(snp => snp._2))
+            if (cList.contains("H37RV_BRD_V5")){ //Inverse SNPs indicating the absence of this cluster.
+              (cName, notcSNPs95.keysIterator.filter(snp => !cSNPs95.contains(snp)).toList.sortBy(_._2))
+            } else { // SNPs indicating the presence of this cluster.
+              (cName, cSNPs95.keysIterator.filter(snp => !notcSNPs95.contains(snp)).toList.sortBy(snp => snp._2))
+            }
           }
         }
       }
@@ -120,10 +124,13 @@ object SnpAssociation {
         c match {
           case (cName, cList) => {
             val mList = cList.filter(snp => associatedSnpsPos2.contains(snp._2))
-            mList.map(snp => (">" + snp._1 + snp._2 + snp._3 + "_presence_" + cName, ref.substring(snp._2 - 11, snp._2 - 1) + snp._3 + ref.substring(snp._2, snp._2 + 10)))
+            if (clusters(cName).contains("H37RV_BRD_V5")){
+              mList.map(snp => (">" + snp._1 + snp._2 + snp._3 + "_absence_" + cName, ref.substring(snp._2 - 11, snp._2 - 1) + snp._3 + ref.substring(snp._2, snp._2 + 10)))
+            } else {
+              mList.map(snp => (">" + snp._1 + snp._2 + snp._3 + "_presence_" + cName, ref.substring(snp._2 - 11, snp._2 - 1) + snp._3 + ref.substring(snp._2, snp._2 + 10)))
+            }
           }
         }
-
       }.toList
 
       /**
@@ -131,7 +138,7 @@ object SnpAssociation {
        */
       
       val mCounts = markers.map(m1 => (m1, markers.count(m2 => m2._2 == m1._2)))
-      //println(mCounts)
+      println("Markers + counts: " + mCounts)
       
       val selection = mCounts.filter(m => m._2 == 1).map(_._1)
       println(selection.size + " unique markers.")
