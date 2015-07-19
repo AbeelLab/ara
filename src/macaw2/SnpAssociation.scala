@@ -101,6 +101,7 @@ object SnpAssociation {
       def remove(ls: List[Int]): List[Int] = {
         def remove(ls: List[Int], prev: Int): List[Int] = ls match {
           case x :: xs =>
+            print(x + " ")
             if (prev < x - 10) xs match {
               case y :: ys => if (x < y - 10) x :: remove(xs, x) else remove(ys, y)
               case Nil => ls
@@ -110,7 +111,7 @@ object SnpAssociation {
         }
         remove(ls, -10)
       }
-
+      
       val associatedSnpsPos2 = remove(associatedSnpsPos)
 
       println(associatedSnpsPos2)
