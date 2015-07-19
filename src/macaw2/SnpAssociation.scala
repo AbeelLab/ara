@@ -101,7 +101,7 @@ object SnpAssociation {
       def remove(ls: List[Int]): List[Int] = {
         def remove(ls: List[Int], prev: Int): List[Int] = ls match {
           case x :: xs =>
-            if (prev < x - 10) {println("x: " + x + ", xs: " + xs); xs match {
+            if (prev < x - 10) { xs match {
               case y :: ys => if (x < y - 10) x :: remove(xs, x) else remove(ys, y)
               case Nil => ls
             }}
@@ -118,7 +118,7 @@ object SnpAssociation {
 
       /**
        * Generate markers
-       */
+       */ 
       val ref = Source.fromFile("Resources/MT_H37RV_BRD_V5.fasta").getLines.filterNot(_.startsWith(">")).mkString
       val markers = associatedSnps.flatMap { c =>
         c match {
