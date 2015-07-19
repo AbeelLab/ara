@@ -1,4 +1,4 @@
-//package macaw2
+package macaw2
 
 import scala.io.Source
 import java.io.File
@@ -45,7 +45,8 @@ object SnpAssociation {
         if (arr(4) == "." && arr(6) == "PASS") true
         else false
       }
-
+      
+      
       /**
        * Map of clusters. Key = cluster name, value = List of sample names
        */
@@ -110,7 +111,8 @@ object SnpAssociation {
       /**
        * Generate markers
        */
-      val ref = Source.fromFile("Resources/MT_H37RV_BRD_V5.fasta").getLines.filterNot(_.startsWith(">")).mkString
+      
+      val ref = Source.fromInputStream(getClass.getResourceAsStream("MT_H37RV_BRD_V5.fasta")).getLines.filterNot(_.startsWith(">")).mkString
       val markers = associatedSnps.flatMap { c =>
         c match {
           case (cName, cList) => {
