@@ -81,7 +81,7 @@ object SnpAssociation {
             val notcSnpCounts = notcNames.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size)
             val cSNPs95 = cSnpCounts.filter(s => s match { case (snp, count) => (count > cList.size * 0.95) }) // SNPs in more than 95% of samples in cluster.
             val notcSNPs95 = notcSnpCounts.filter(s => s match { case (snp, count) => (count > notcNames.size * 0.95) }) // SNPs in more than 95% of samples in all other clusters.
-            if (cList.contains("MT_H37RV_BRD_V5")){ //Inverse SNPs indicating the absence of this cluster.
+            if (cList.contains("MT_H37RV_BRD_V5")) { //Inverse SNPs indicating the absence of this cluster.
               (cName, notcSNPs95.keysIterator.filter(snp => !cSNPs95.contains(snp)).toList.sortBy(_._2))
             } else { // SNPs indicating the presence of this cluster.
               (cName, cSNPs95.keysIterator.filter(snp => !notcSNPs95.contains(snp)).toList.sortBy(snp => snp._2))
@@ -101,16 +101,19 @@ object SnpAssociation {
       def remove(ls: List[Int]): List[Int] = {
         def remove(ls: List[Int], prev: Int): List[Int] = ls match {
           case x :: xs =>
-            if (prev < x - 10) { xs match {
-              case y :: ys => if (x < y - 10) x :: remove(xs, x) else remove(ys, y)
-              case Nil => ls
-            }}
-            else remove(xs, x)
+            if (prev < x - 10) {
+              xs match {
+                case y :: ys =>
+                  if (x < y - 10) x :: remove(xs, x)
+                  else remove(ys, y)
+                case Nil => ls
+              }
+            } else { remove(xs, x) }
           case Nil => ls
         }
         remove(ls, -10)
       }
-      
+
       val associatedSnpsPos2 = remove(associatedSnpsPos)
 
       println(associatedSnpsPos2)
@@ -118,13 +121,13 @@ object SnpAssociation {
 
       /**
        * Generate markers
-       */ 
+       */
       val ref = Source.fromFile("Resources/MT_H37RV_BRD_V5.fasta").getLines.filterNot(_.startsWith(">")).mkString
       val markers = associatedSnps.flatMap { c =>
         c match {
           case (cName, cList) => {
             val mList = cList.filter(snp => associatedSnpsPos2.contains(snp._2))
-            if (clusters(cName).contains("MT_H37RV_BRD_V5")){
+            if (clusters(cName).contains("MT_H37RV_BRD_V5")) {
               mList.map(snp => (">" + snp._1 + snp._2 + snp._3 + "_absence_" + cName, ref.substring(snp._2 - 11, snp._2 - 1) + snp._3 + ref.substring(snp._2, snp._2 + 10)))
             } else {
               mList.map(snp => (">" + snp._1 + snp._2 + snp._3 + "_presence_" + cName, ref.substring(snp._2 - 11, snp._2 - 1) + snp._3 + ref.substring(snp._2, snp._2 + 10)))
@@ -136,13 +139,13 @@ object SnpAssociation {
       /**
        * Remove non-unique markers
        */
-      
+
       val mCounts = markers.map(m1 => (m1, markers.count(m2 => m2._2 == m1._2)))
       println("Markers + counts: " + mCounts)
-      
+
       val selection = mCounts.filter(m => m._2 == 1).map(_._1)
       println(selection.size + " unique markers.")
-      
+
       /**
        * Print SNP selection to file
        */
@@ -150,7 +153,7 @@ object SnpAssociation {
       pw.println("# MTBC sublineage markers")
       selection foreach (m => pw.println(m._1 + "\n" + m._2))
       pw.close
-      
+
     }
   }
 }
