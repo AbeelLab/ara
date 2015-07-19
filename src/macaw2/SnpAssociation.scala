@@ -97,26 +97,13 @@ object SnpAssociation {
       /**
        * Remove SNPs within 10 bp
        */
-
-      def remove(ls: List[Int]): List[Int] = {
-        def remove(ls: List[Int], prev: Int): List[Int] = ls match {
-          case x :: xs =>
-            if (prev < x - 10) {
-              xs match {
-                case y :: ys =>
-                  print("x: " + x + ", y: " + y)
-                  if (x < y - 10) x :: remove(xs, x)
-                  else remove(ys, y)
-                case Nil => ls
-              }
-            } else { remove(xs, x) }
-          case Nil => ls
-        }
-        remove(ls, -10)
+      val associatedSnpsPos2 = associatedSnpsPos.filterNot { x => 
+        val idx = associatedSnpsPos.indexOf(x)
+        if (idx == 0) (associatedSnpsPos(idx + 1) - associatedSnpsPos(idx) < 11)
+        else if (idx == associatedSnpsPos.size - 1) (associatedSnpsPos(idx) - associatedSnpsPos(idx - 1) < 11)
+        else (associatedSnpsPos(idx) - associatedSnpsPos(idx - 1) < 11) || (associatedSnpsPos(idx + 1) - associatedSnpsPos(idx) < 11)
       }
-
-      val associatedSnpsPos2 = remove(associatedSnpsPos)
-
+      
       println(associatedSnpsPos2)
       println(associatedSnpsPos2.size + " non-overlapping SNPs.")
 
