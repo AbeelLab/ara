@@ -79,12 +79,12 @@ object SnpAssociation {
             val cSnpCounts = cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size) // All SNPs in this cluster
             val notcNames = (clusters - cName).flatMap(s => s._2).toList // All other clusters names.
             val notcSnpCounts = notcNames.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size)
-            val cSNPs95 = cSnpCounts.filter(s => s match { case (snp, count) => (count > cList.size * 0.95) }) // SNPs in more than 95% of samples in cluster.
-            val notcSNPs95 = notcSnpCounts.filter(s => s match { case (snp, count) => (count > notcNames.size * 0.95) }) // SNPs in more than 95% of samples in all other clusters.
             if (cList.contains("MT_H37RV_BRD_V5")) { //Inverse SNPs indicating the absence of this cluster.
-              (cName, notcSNPs95.keysIterator.filter(snp => !cSNPs95.contains(snp)).toList.sortBy(_._2))
+              val notcSNPs95 = notcSnpCounts.filter(s => s match { case (snp, count) => (count > notcNames.size * 0.95) }).map(kv => kv._1).toList // SNPs in more than 95% of samples in all other clusters.
+              (cName, notcSNPs95.map(snp => if (cSnpCounts.contains(snp)) snp -> cSnpCounts(snp) else snp -> 0).filter(s => s match {case (snp, count) => (count < 0.05 * cName.size)}).map(kv => kv._1))
             } else { // SNPs indicating the presence of this cluster.
-              (cName, cSNPs95.keysIterator.filter(snp => !notcSNPs95.contains(snp)).toList.sortBy(snp => snp._2))
+              val cSNPs95 = cSnpCounts.filter(s => s match { case (snp, count) => (count > cList.size * 0.95) }).map(kv => kv._1).toList  // SNPs in more than 95% of samples in cluster.
+              (cName, cSNPs95.map(snp => if (notcSnpCounts.contains(snp)) snp -> notcSnpCounts(snp) else snp -> 0).filter(s => s match {case (snp, count) => (count < 0.05 * notcNames.size)}).map(kv => kv._1))
             }
           }
         }
@@ -104,6 +104,7 @@ object SnpAssociation {
             if (prev < x - 10) {
               xs match {
                 case y :: ys =>
+                  print("x: " + x + ", y: " + y)
                   if (x < y - 10) x :: remove(xs, x)
                   else remove(ys, y)
                 case Nil => ls
