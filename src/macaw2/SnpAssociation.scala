@@ -67,17 +67,27 @@ object SnpAssociation {
         (name, snps)
       }.toMap
 
-      val totalSnps = snpLists.flatMap(s => s._2).toList.distinct.sortBy(snp => snp._2)
-      println(snpLists.size + " Samples, " + totalSnps.size + " distinct SNPs.")
+      val totalSnps = snpLists.flatMap(s => s._2).toList
+      val totalDistinctSnps = totalSnps.distinct.sortBy(snp => snp._2)
+      println(snpLists.size + " Samples, " + totalSnps.size + " SNPs in total, of which " + totalDistinctSnps.size + " distinct SNPs.")      
 
+      clusters.map{ c =>
+        c match {
+          case (cName, cList) => {
+            val c = cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample))
+            println(cName + ": " + c.size + " SNPs, of which " + c.distinct.size + " distinct SNPs.")
+          }
+        }
+      }
+      
+      
       /**
        * Sublineage association
        */
       val associatedSnps = clusters.map { c =>
         c match {
           case (cName, cList) => {
-            val cSnpCounts = cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size) // All SNPs in this cluster
-            println(cName + ": " + cSnpCounts.size + " distinct SNPs in cluster.")
+            val cSnpCounts = cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size) // All SNPs in this cluster and their counts
             val notcNames = (clusters - cName).flatMap(s => s._2).toList // All other clusters names.
             val notcSnpCounts = notcNames.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size)
             if (cList.contains("MT_H37RV_BRD_V5")) { //Inverse SNPs indicating the absence of this cluster.
@@ -153,7 +163,7 @@ object SnpAssociation {
        */
 
       val allMarkers = markers.flatMap(c => c._2).map(_._2).toList
-      val mCounts = allMarkers.map(m1 => (m1, markers.count(m2 => m2 == m1))).toMap
+      val mCounts = allMarkers.map(m1 => (m1, allMarkers.count(m2 => m2 == m1))).toMap
       //println("Markers + counts: " + mCounts)
       
       val selection = markers.map{ c =>
