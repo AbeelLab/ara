@@ -91,12 +91,20 @@ object SnpAssociation {
         }
       }
 
+      associatedSnps.toList.sortBy(_._1).foreach{ c =>
+        c match {
+          case (cName, snpList) => {
+            println(cName + ": " + snpList.size + " SNPs specific to this cluster.")
+          }
+        }        
+      }
+      
       val associatedSnpsPos = associatedSnps.flatMap(c => c._2).map(_._2).toList.sorted
       //println(associatedSnpsPos)
       println(associatedSnpsPos.size + " cluster specific SNPs.")
 
       /**
-       * Remove SNPs within 10 bp
+       * Remove SNP positions within 10 bp
        */
       val associatedSnpsPos2 = associatedSnpsPos.filterNot { x => 
         val idx = associatedSnpsPos.indexOf(x)
@@ -105,6 +113,21 @@ object SnpAssociation {
         else (associatedSnpsPos(idx) - associatedSnpsPos(idx - 1) < 11) || (associatedSnpsPos(idx + 1) - associatedSnpsPos(idx) < 11)
       }
       
+      val associatedSnps2 = associatedSnps.map{c => 
+        c match {
+          case (cName, snpList) => {
+            (cName -> snpList.filter(snp => associatedSnpsPos2.contains(snp._2)))
+          }
+        }  
+      }
+      
+      associatedSnps2.toList.sortBy(_._1).foreach{ c =>
+        c match {
+          case (cName, snpList) => {
+            println(cName + ": " + snpList.size + " SNPs not within 10 bp.")
+          }
+        }        
+      }
       //println(associatedSnpsPos2)
       println(associatedSnpsPos2.size + " non-overlapping SNPs.")
 
@@ -113,35 +136,57 @@ object SnpAssociation {
        */
       
       val ref = Source.fromFile(args(2)).getLines.filterNot(_.startsWith(">")).mkString //Source.fromInputStream(getClass.getResourceAsStream("MT_H37RV_BRD_V5.fasta"))
-      val markers = associatedSnps.flatMap { c =>
+      val markers = associatedSnps2.map { c =>
         c match {
-          case (cName, cList) => {
-            val mList = cList.filter(snp => associatedSnpsPos2.contains(snp._2))
+          case (cName, snpList) => {
             if (clusters(cName).contains("MT_H37RV_BRD_V5")) {
-              mList.map(snp => (">" + snp._1 + snp._2 + snp._3 + "_absence_" + cName, ref.substring(snp._2 - 11, snp._2 - 1) + snp._3 + ref.substring(snp._2, snp._2 + 10)))
+              (cName -> snpList.map(snp => (">" + snp._1 + snp._2 + snp._3 + "_absence_" + cName, ref.substring(snp._2 - 11, snp._2 - 1) + snp._3 + ref.substring(snp._2, snp._2 + 10))))
             } else {
-              mList.map(snp => (">" + snp._1 + snp._2 + snp._3 + "_presence_" + cName, ref.substring(snp._2 - 11, snp._2 - 1) + snp._3 + ref.substring(snp._2, snp._2 + 10)))
+              (cName -> snpList.map(snp => (">" + snp._1 + snp._2 + snp._3 + "_presence_" + cName, ref.substring(snp._2 - 11, snp._2 - 1) + snp._3 + ref.substring(snp._2, snp._2 + 10))))
             }
           }
         }
-      }.toList
+      }
 
       /**
        * Remove non-unique markers
        */
 
-      val mCounts = markers.map(m1 => (m1, markers.count(m2 => m2._2 == m1._2)))
-      println("Markers + counts: " + mCounts)
+      val allMarkers = markers.flatMap(c => c._2)
+      val mCounts = allMarkers.map(m1 => (m1, markers.count(m2 => m2._2 == m1._2)))
+      //println("Markers + counts: " + mCounts)
+      
+      val selection = markers.map{ c =>
+        c match {
+          case (cName, snpList) => {
+            (cName, snpList.filter(snp => mCounts(snp) == 1))
+          }
+        }  
+      }
 
-      val selection = mCounts.filter(m => m._2 == 1).map(_._1)
-      println(selection.size + " unique markers.")
+      selection.toList.sortBy(_._1).foreach{c => 
+        c match {
+          case (cName, snpList) => {
+            println(cName + ": " + snpList.size + " unique markers.")
+          }
+        }
+      }
+      
+      val allSelection = mCounts.filter(m => m._2 == 1).map(_._1)
+      println(allSelection.size + " unique markers.")
 
       /**
        * Print SNP selection to file
        */
       val pw = new java.io.PrintWriter(new File("SNPinfo.txt"))
       pw.println("# MTBC sublineage markers")
-      selection foreach (m => pw.println(m._1 + "\n" + m._2))
+      selection foreach { c =>
+        c match {
+          case (cName, mList) => {
+            mList.foreach(m => pw.println(m._1 + "\n" + m._2))
+          }
+        }
+      } 
       pw.close
 
     }
