@@ -1,4 +1,4 @@
-package macaw2
+//package macaw2
 
 import scala.io.Source
 import java.io.File
@@ -9,7 +9,7 @@ import java.io.PrintWriter
  */
 object SnpAssociation {
 
-  val usage = "scala SnpAssociation.scala [clusterfile] [pathfile]"
+  val usage = "scala SnpAssociation.scala [clusterfile] [pathfile] [reference fastafile]"
 
   def main(args: Array[String]) {
 
@@ -22,7 +22,7 @@ object SnpAssociation {
       result
     }
 
-    if (args.size != 2) println(usage) else time {
+    if (args.size != 3) println(usage) else time {
 
       object SNP {
         def unapply(s: String): Option[(String, Int, String)] = {
@@ -92,7 +92,7 @@ object SnpAssociation {
       }
 
       val associatedSnpsPos = associatedSnps.flatMap(c => c._2).map(_._2).toList.sorted
-      println(associatedSnpsPos)
+      //println(associatedSnpsPos)
       println(associatedSnpsPos.size + " cluster specific SNPs.")
 
       /**
@@ -105,14 +105,14 @@ object SnpAssociation {
         else (associatedSnpsPos(idx) - associatedSnpsPos(idx - 1) < 11) || (associatedSnpsPos(idx + 1) - associatedSnpsPos(idx) < 11)
       }
       
-      println(associatedSnpsPos2)
+      //println(associatedSnpsPos2)
       println(associatedSnpsPos2.size + " non-overlapping SNPs.")
 
       /**
        * Generate markers
        */
       
-      val ref = Source.fromInputStream(getClass.getResourceAsStream("MT_H37RV_BRD_V5.fasta")).getLines.filterNot(_.startsWith(">")).mkString
+      val ref = Source.fromFile(args(2)).getLines.filterNot(_.startsWith(">")).mkString //Source.fromInputStream(getClass.getResourceAsStream("MT_H37RV_BRD_V5.fasta"))
       val markers = associatedSnps.flatMap { c =>
         c match {
           case (cName, cList) => {
