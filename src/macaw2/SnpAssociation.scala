@@ -76,8 +76,8 @@ object SnpAssociation {
       val associatedSnps = clusters.map { c =>
         c match {
           case (cName, cList) => {
-            println("cluster name: " + cName + ",\tsamples in cluster: " + cList)
             val cSnpCounts = cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size) // All SNPs in this cluster
+            println(cName + ": " + cSnpCounts.size + " distinct SNPs in cluster.")
             val notcNames = (clusters - cName).flatMap(s => s._2).toList // All other clusters names.
             val notcSnpCounts = notcNames.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size)
             if (cList.contains("MT_H37RV_BRD_V5")) { //Inverse SNPs indicating the absence of this cluster.
@@ -152,14 +152,14 @@ object SnpAssociation {
        * Remove non-unique markers
        */
 
-      val allMarkers = markers.flatMap(c => c._2)
-      val mCounts = allMarkers.map(m1 => (m1, markers.count(m2 => m2._2 == m1._2)))
+      val allMarkers = markers.flatMap(c => c._2).map(_._2).toList
+      val mCounts = allMarkers.map(m1 => (m1, markers.count(m2 => m2 == m1))).toMap
       //println("Markers + counts: " + mCounts)
       
       val selection = markers.map{ c =>
         c match {
           case (cName, snpList) => {
-            (cName, snpList.filter(snp => mCounts(snp) == 1))
+            (cName, snpList.filter(snp => mCounts(snp._2) == 1))
           }
         }  
       }
@@ -172,8 +172,7 @@ object SnpAssociation {
         }
       }
       
-      val allSelection = mCounts.filter(m => m._2 == 1).map(_._1)
-      println(allSelection.size + " unique markers.")
+      println(selection.flatMap(_._2).size + " unique markers in total.")
 
       /**
        * Print SNP selection to file
