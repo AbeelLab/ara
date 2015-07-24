@@ -66,12 +66,21 @@ object SnpAssociation {
         }).toList
         (name, snps)
       }.toMap
+      
+      clusters.toList.sortBy(_._1).foreach{ c =>
+        c match {
+          case (cName, cList) => {
+            println(cName + ": ")
+            cList.foreach(print)
+          }
+        }
+      }      
+      println(snpLists.size + " Samples")      
 
       val totalSnps = snpLists.flatMap(s => s._2).toList
       val totalDistinctSnps = totalSnps.distinct.sortBy(snp => snp._2)
-      println(snpLists.size + " Samples, " + totalSnps.size + " SNPs in total, of which " + totalDistinctSnps.size + " distinct SNPs.")      
-
-      clusters.map{ c =>
+      
+      clusters.toList.sortBy(_._1).foreach{ c =>
         c match {
           case (cName, cList) => {
             val c = cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample))
@@ -79,6 +88,7 @@ object SnpAssociation {
           }
         }
       }
+      println(totalSnps.size + " SNPs in total, of which " + totalDistinctSnps.size + " distinct SNPs in total SNP set.")
       
       
       /**
@@ -174,13 +184,18 @@ object SnpAssociation {
         }  
       }
 
-      selection.toList.sortBy(_._1).foreach{c => 
+      /**selection.toList.sortBy(_._1).foreach{c => 
         c match {
           case (cName, snpList) => {
             println(cName + ": " + snpList.size + " unique markers.")
           }
         }
-      }
+      }*/
+      
+      println("----------Unique Markers----------\n")
+      selection.map(_._1).toList.sorted.foreach(c => print(c + "\t"))
+      println
+      selection.toList.sortBy(_._1).foreach(c => c match {case (cName, cSNPs) => print(cSNPs.size + "\t")})
       
       println(selection.flatMap(_._2).size + " unique markers in total.")
 
