@@ -75,16 +75,7 @@ object SnpAssociation {
         }).toList
         (name, snps)
       }.toMap
-      
-      clusters.toList.sortBy(_._1).foreach{ c =>
-        c match {
-          case (cName, cList) => {
-            println(cName + ": ")
-            cList.foreach(print)
-          }
-        }
-      }      
-      
+            
       val totalSnps = snpLists.flatMap(s => s._2).toList
       val totalDistinctSnps = totalSnps.distinct.sortBy(snp => snp._2)
       println(snpLists.size + " Samples" + totalSnps.size + " SNPs in total, of which " + totalDistinctSnps.size + " distinct SNPs in total SNP set.")      
@@ -112,16 +103,9 @@ object SnpAssociation {
             }
           }
         }
-      }
-
-      associatedSnps.toList.sortBy(_._1).foreach{ c =>
-        c match {
-          case (cName, snpList) => {
-            println(cName + ": " + snpList.size + " SNPs specific to this cluster.")
-          }
-        }        
-      }      
+      }  
       printTable("Cluster specific SNPs", associatedSnps)
+      
       
       /**
        * Remove SNP positions within 10 bp
@@ -143,6 +127,7 @@ object SnpAssociation {
       }
       printTable("SNPs not within 10 bp", associatedSnps2)
 
+      
       /**
        * Generate markers
        */
@@ -160,6 +145,7 @@ object SnpAssociation {
         }
       }
 
+      
       /**
        * Remove non-unique markers
        */
