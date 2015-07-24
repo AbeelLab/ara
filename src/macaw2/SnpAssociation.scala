@@ -47,6 +47,16 @@ object SnpAssociation {
       }
       
       
+      def printTable(pw: PrintWriter, header: String, cMap: Map[String, List[Any]]) = {
+        pw.println("----------" + header + "----------")
+        cMap.map(_._1).toList.sorted.foreach(c => print(c + "\t"))
+        pw.println("Total")
+        cMap.toList.sortBy(_._1).foreach(c => c match {case (cName, cList) => print(cList.size + "\t")})
+        pw.println(cMap.flatMap(_._2).size + "\n")
+      }
+      
+      val console = new PrintWriter(System.out)
+            
       /**
        * Map of clusters. Key = cluster name, value = List of sample names
        */
@@ -75,21 +85,15 @@ object SnpAssociation {
           }
         }
       }      
-      println(snpLists.size + " Samples")      
-
+      
       val totalSnps = snpLists.flatMap(s => s._2).toList
       val totalDistinctSnps = totalSnps.distinct.sortBy(snp => snp._2)
-      
-      clusters.toList.sortBy(_._1).foreach{ c =>
-        c match {
-          case (cName, cList) => {
-            val c = cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample))
-            println(cName + ": " + c.size + " SNPs, of which " + c.distinct.size + " distinct SNPs.")
-          }
-        }
-      }
-      println(totalSnps.size + " SNPs in total, of which " + totalDistinctSnps.size + " distinct SNPs in total SNP set.")
-      
+      println(snpLists.size + " Samples" + totalSnps.size + " SNPs in total, of which " + totalDistinctSnps.size + " distinct SNPs in total SNP set.")      
+
+      printTable(console, "Samples per cluster", clusters)
+      printTable(console, "Distinct SNPs per cluster", clusters.map(c => c match {case (cName, cList) => (cName, cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)))}))
+      printTable(console, "Distinct SNPs per cluster", clusters.map(c => c match {case (cName, cList) => (cName, cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).distinct)}))
+           
       
       /**
        * Sublineage association
@@ -117,15 +121,13 @@ object SnpAssociation {
             println(cName + ": " + snpList.size + " SNPs specific to this cluster.")
           }
         }        
-      }
+      }      
+      printTable(console, "Cluster specific SNPs", associatedSnps)
       
-      val associatedSnpsPos = associatedSnps.flatMap(c => c._2).map(_._2).toList.sorted
-      //println(associatedSnpsPos)
-      println(associatedSnpsPos.size + " cluster specific SNPs.")
-
       /**
        * Remove SNP positions within 10 bp
        */
+      val associatedSnpsPos = associatedSnps.flatMap(c => c._2).map(_._2).toList.sorted
       val associatedSnpsPos2 = associatedSnpsPos.filterNot { x => 
         val idx = associatedSnpsPos.indexOf(x)
         if (idx == 0) (associatedSnpsPos(idx + 1) - associatedSnpsPos(idx) < 11)
@@ -140,16 +142,7 @@ object SnpAssociation {
           }
         }  
       }
-      
-      associatedSnps2.toList.sortBy(_._1).foreach{ c =>
-        c match {
-          case (cName, snpList) => {
-            println(cName + ": " + snpList.size + " SNPs not within 10 bp.")
-          }
-        }        
-      }
-      //println(associatedSnpsPos2)
-      println(associatedSnpsPos2.size + " non-overlapping SNPs.")
+      printTable(console, "SNPs not within 10 bp", associatedSnps2)
 
       /**
        * Generate markers
@@ -174,8 +167,6 @@ object SnpAssociation {
 
       val allMarkers = markers.flatMap(c => c._2).map(_._2).toList
       val mCounts = allMarkers.map(m1 => (m1, allMarkers.count(m2 => m2 == m1))).toMap
-      //println("Markers + counts: " + mCounts)
-      
       val selection = markers.map{ c =>
         c match {
           case (cName, snpList) => {
@@ -183,22 +174,8 @@ object SnpAssociation {
           }
         }  
       }
-
-      /**selection.toList.sortBy(_._1).foreach{c => 
-        c match {
-          case (cName, snpList) => {
-            println(cName + ": " + snpList.size + " unique markers.")
-          }
-        }
-      }*/
+      printTable(console, "Unique Markers", selection)
       
-      println("----------Unique Markers----------\n")
-      selection.map(_._1).toList.sorted.foreach(c => print(c + "\t"))
-      println
-      selection.toList.sortBy(_._1).foreach(c => c match {case (cName, cSNPs) => print(cSNPs.size + "\t")})
-      
-      println(selection.flatMap(_._2).size + " unique markers in total.")
-
       /**
        * Print SNP selection to file
        */
