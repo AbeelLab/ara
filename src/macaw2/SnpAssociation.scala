@@ -47,15 +47,14 @@ object SnpAssociation {
       }
       
       
-      def printTable(pw: PrintWriter, header: String, cMap: Map[String, List[Any]]) = {
-        pw.println("----------" + header + "----------")
+      def printTable(header: String, cMap: Map[String, List[Any]]) = {
+        println("----------" + header + "----------")
         cMap.map(_._1).toList.sorted.foreach(c => print(c + "\t"))
-        pw.println("Total")
+        println("Total")
         cMap.toList.sortBy(_._1).foreach(c => c match {case (cName, cList) => print(cList.size + "\t")})
-        pw.println(cMap.flatMap(_._2).size + "\n")
+        println(cMap.flatMap(_._2).size + "\n")
       }
       
-      val console = new PrintWriter(System.out)
             
       /**
        * Map of clusters. Key = cluster name, value = List of sample names
@@ -90,9 +89,9 @@ object SnpAssociation {
       val totalDistinctSnps = totalSnps.distinct.sortBy(snp => snp._2)
       println(snpLists.size + " Samples" + totalSnps.size + " SNPs in total, of which " + totalDistinctSnps.size + " distinct SNPs in total SNP set.")      
 
-      printTable(console, "Samples per cluster", clusters)
-      printTable(console, "Distinct SNPs per cluster", clusters.map(c => c match {case (cName, cList) => (cName, cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)))}))
-      printTable(console, "Distinct SNPs per cluster", clusters.map(c => c match {case (cName, cList) => (cName, cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).distinct)}))
+      printTable("Samples per cluster", clusters)
+      printTable("Distinct SNPs per cluster", clusters.map(c => c match {case (cName, cList) => (cName, cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)))}))
+      printTable("Distinct SNPs per cluster", clusters.map(c => c match {case (cName, cList) => (cName, cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).distinct)}))
            
       
       /**
@@ -122,7 +121,7 @@ object SnpAssociation {
           }
         }        
       }      
-      printTable(console, "Cluster specific SNPs", associatedSnps)
+      printTable("Cluster specific SNPs", associatedSnps)
       
       /**
        * Remove SNP positions within 10 bp
@@ -142,7 +141,7 @@ object SnpAssociation {
           }
         }  
       }
-      printTable(console, "SNPs not within 10 bp", associatedSnps2)
+      printTable("SNPs not within 10 bp", associatedSnps2)
 
       /**
        * Generate markers
@@ -174,7 +173,7 @@ object SnpAssociation {
           }
         }  
       }
-      printTable(console, "Unique Markers", selection)
+      printTable("Unique Markers", selection)
       
       /**
        * Print SNP selection to file
