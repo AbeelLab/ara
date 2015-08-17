@@ -132,7 +132,7 @@ object SnpAssociation {
        * Generate markers
        */
       
-      val ref = Source.fromFile(args(2)).getLines.filterNot(_.startsWith(">")).mkString //Source.fromInputStream(getClass.getResourceAsStream("MT_H37RV_BRD_V5.fasta"))
+      val ref = Source.fromFile(args(2)).getLines.filterNot(_.startsWith(">")).mkString
       val markers = associatedSnps2.map { c =>
         c match {
           case (cName, snpList) => {
