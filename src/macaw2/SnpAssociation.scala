@@ -95,11 +95,19 @@ object SnpAssociation {
             val notcNames = (clusters - cName).flatMap(s => s._2).toList // All other clusters names.
             val notcSnpCounts = notcNames.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size)
             if (cList.contains("MT_H37RV_BRD_V5")) { //Inverse SNPs indicating the absence of this cluster.
-              val notcSNPs95 = notcSnpCounts.filter(s => s match { case (snp, count) => (count > notcNames.size * 0.95) }).map(kv => kv._1).toList // SNPs in more than 95% of samples in all other clusters.
-              (cName, notcSNPs95.map(snp => if (cSnpCounts.contains(snp)) snp -> cSnpCounts(snp) else snp -> 0).filter(s => s match {case (snp, count) => (count < 0.05 * cName.size)}).map(kv => kv._1))
+              val notcSNPs95 = notcSnpCounts.filter(s => s match { 
+                case (snp, count) => (count > notcNames.size * 0.95)  // SNPs in more than 95% of samples in all other clusters.
+              }).map(kv => kv._1).toList 
+              (cName, notcSNPs95.map(snp => if (cSnpCounts.contains(snp)) snp -> cSnpCounts(snp) else snp -> 0).filter(s => s match {
+                case (snp, count) => (count < 0.05 * cName.size)
+              }).map(kv => kv._1))
             } else { // SNPs indicating the presence of this cluster.
-              val cSNPs95 = cSnpCounts.filter(s => s match { case (snp, count) => (count > cList.size * 0.95) }).map(kv => kv._1).toList  // SNPs in more than 95% of samples in cluster.
-              (cName, cSNPs95.map(snp => if (notcSnpCounts.contains(snp)) snp -> notcSnpCounts(snp) else snp -> 0).filter(s => s match {case (snp, count) => (count < 0.05 * notcNames.size)}).map(kv => kv._1))
+              val cSNPs95 = cSnpCounts.filter(s => s match { 
+                case (snp, count) => (count > cList.size * 0.95) // SNPs in more than 95% of samples in cluster.
+              }).map(kv => kv._1).toList  
+              (cName, cSNPs95.map(snp => if (notcSnpCounts.contains(snp)) snp -> notcSnpCounts(snp) else snp -> 0).filter(s => s match {
+                case (snp, count) => (count < 0.05 * notcNames.size)
+              }).map(kv => kv._1))
             }
           }
         }
