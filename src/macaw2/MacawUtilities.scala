@@ -33,7 +33,7 @@ object MacawUtilities {
   
   def main(args: Array[String]) {
     
-    val parser = new scopt.OptionParser[Config]("scala MacawUtilities.scala") {
+    val parser = new scopt.OptionParser[Config]("java -jar Ara.jar interpret-GT") {
       opt[String]('m', "markers") required() action { (x, c) => c.copy(snpTyperOutput = x) } text ("Output file of MacawSNPTyper.")
       opt[String]('o', "output") required() action { (x, c) => c.copy(result = x) } text ("Output name for the file with results.")
     }
