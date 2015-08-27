@@ -57,11 +57,17 @@ object Gene2GenomeCoordination {
               val gC = arr.map(_.toInt)
               val chrCoor = gC.map{_ match {
                 case c if c < 0 => {
-                  if (gene.dir == "+" ) (gene.start + c)
+                  if (gene.dir == "+" ) 
+                    if (locus_tag == "RVBD_6018") gene.start + c - 10 
+                    else if (locus_tag == "RVBD_6019") gene.start + c - 2
+                    else (gene.start + c)
                   else (gene.end - c)  
                 }
                 case c if c > 0 => {
-                  if (gene.dir == "+" ) (gene.start + c - 1)
+                  if (gene.dir == "+" ) 
+                    if (locus_tag == "RVBD_6018") gene.start + c - 11
+                    else if (locus_tag == "RVBD_6019") gene.start + c - 3
+                    else (gene.start + c - 1)
                   else (gene.end - c + 1)  
                 }                
               }}
