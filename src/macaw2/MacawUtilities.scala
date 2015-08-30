@@ -6,9 +6,6 @@ import java.io.PrintWriter
 import edu.northwestern.at.utils.math.statistics.FishersExactTest
 
 
-/**
- * @author Arlin
- */
 object MacawUtilities {
   
   case class Config(
@@ -16,69 +13,58 @@ object MacawUtilities {
     val result: String = null
   )
   
-  class Marker(val mutInfo: String, val count: Int, val isPresent: Boolean, val lineage: String) {
-    override def toString(): String = mutInfo + "\t" + count + "\t" + (if (isPresent) "present" else "absent") + "\t" + lineage 
-  }
-  
-  object Marker {
-    def unapply(s: String): Option[(String, Int, Boolean, String)] = {
-      val line = s.split("\t")
-      val mutInfo = line(0)
-      val count = line(1).toInt
-      val presence = if (line(3) == "present") true else false
-      Some(mutInfo, count, presence, mutInfo.split("_")(2))      
-    }
-  }
-  
   
   def main(args: Array[String]) {
     
-    val parser = new scopt.OptionParser[Config]("java -jar Ara.jar interpret-GT") {
+    val parser = new scopt.OptionParser[Config]("java -jar ara.jar interpret-GT") {
       opt[String]('m', "markers") required() action { (x, c) => c.copy(snpTyperOutput = x) } text ("Output file of MacawSNPTyper.")
-      opt[String]('o', "output") required() action { (x, c) => c.copy(result = x) } text ("Output name for the file with results.")
+      opt[String]('o', "output") required() action { (x, c) => c.copy(result = x + ".interpret-MI.txt") } text ("Output name for the file with results.")
     }
     
     parser.parse(args, Config()) map { config =>
-      val snpTypes = new File(config.snpTyperOutput)
-      val outFile = new File(config.result)
       
- 
-      val markers = Source.fromFile(snpTypes).getLines.filterNot(_.startsWith("#")).toList.dropRight(2).map { _ match {
-        case Marker(m, c, p, l) => new Marker(m, c, p, l)
+      /** Read markers from file and group by cluster. */
+      val markers = Source.fromFile(new File(config.snpTyperOutput)).getLines.filterNot(_.startsWith("#")).toList.dropRight(2).map { _ match {
+        case Marker(m, c, p) => new ClusterMarker(m, c, p)
       }}.groupBy(_.lineage)
       
-      
+      /** Count total number of markers per cluster. */
       val totalMarkersPerLineage = markers.mapValues(_.size)
       totalMarkersPerLineage.foreach(println)
       println(totalMarkersPerLineage.foldLeft(0)(_ + _._2))
       
+      /** Total number of mapped reads per cluster. */
       val markerCounts = markers.map(_ match {
         case (lineage, linMarkers) => (lineage, linMarkers.map(_.count).foldLeft(0)(_ + _))
       })
       println("markerCounts")
       markerCounts.foreach(println)
       
+      /** Number of present markers per cluster. */
       val linCountsPresent = markers.map(_ match {
         case (lineage, linMarkers) => (lineage, linMarkers.filter(_.isPresent).size)
       })
       println("LinCountsPresent")
       linCountsPresent.foreach(println)
       
-      
+      /** Number of absent markers per cluster. */
       val linCountsAbsent = markers.map(_ match {
         case (lineage, linMarkers) => (lineage, linMarkers.filterNot(_.isPresent).size)
       })
       println("LinCountsAbsent")
       linCountsAbsent.foreach(println)
       
+      /** Sum number of present and absent markers over all clusters. */
       val sumAllPresent = linCountsPresent.foldLeft(0)(_ + _._2)
       val sumAllAbsent = linCountsAbsent.foldLeft(0)(_ + _._2)
       
       println("sumAllPresent: " + sumAllPresent)
       println("sumAllAbsent: " + sumAllAbsent)
       
+      /** List of clusters to detect. */
       val lineages = markers.keysIterator.toList.sorted
-            
+        
+      /** Calculate fisher p-values for each cluster. */
       val fisherPValues = lineages.map{lin =>
           val pValue = FishersExactTest.fishersExactTest(linCountsPresent(lin), sumAllPresent - linCountsPresent(lin), linCountsAbsent(lin), sumAllAbsent - linCountsAbsent(lin))(2) * lineages.size
           if (pValue > 1) (lin, 1.toFloat)
@@ -87,20 +73,27 @@ object MacawUtilities {
       println("fisherPValues: ")
       fisherPValues.foreach(println)
       
+      /** Average read depth per cluster: # of mapped reads per clusters / # of markers per cluster. */
       val avgMarkerPerLin = lineages.map(lin => (lin, markerCounts(lin).toFloat / totalMarkersPerLineage(lin))).toMap
       println("avgMarkerPerLin: ")
       avgMarkerPerLin.foreach(println)
       
+      /** Percentage of present clusters. */
       val allLinDepth = avgMarkerPerLin.foldLeft(0.toFloat)(_ + _._2)
       val linPercentTotal = lineages.map(lin => (lin, avgMarkerPerLin(lin) / allLinDepth)).toMap
       
+      
+      /** Detected clusters */
       val predictedLin = fisherPValues.filter( _ match {
         case (lin, pValue) => pValue < 0.05
       }).map(_._1)
       print("predictedLin: " + predictedLin.mkString(", "))
       
       
-      val pw = new PrintWriter(outFile)
+      /**
+       * Print results to file
+       */
+      val pw = new PrintWriter(new File(config.result))
       pw.println("# Results")      
       predictedLin.size match {
         case x if (x > 1) => {
@@ -120,11 +113,7 @@ object MacawUtilities {
       }.mkString("\n\n"))
       
       pw.close
-      
-      
-      
-    }
-    
-    
+
+    }    
   }
 }

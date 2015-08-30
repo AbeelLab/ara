@@ -11,33 +11,16 @@ object DrugResistances {
     val snpTyperOutput: String = null, 
     val result: String = null
   )
-  
-  class Marker(val mutInfo: String, val count: Int, val isPresent: Boolean){
-    override def toString(): String = mutInfo + "\t" + count + "\t" + (if (isPresent) "present" else "absent")
-    val arr = mutInfo.split("_")
-    val coordinate = arr(0).drop(1).dropRight(1).toInt
-    val markerType = arr(1)
-    val drugs = arr(2)
-  }
 
-  object Marker {
-    def unapply(s: String): Option[(String, Int, Boolean)] = {
-      val line = s.split("\t")
-      val mutInfo = line(0)
-      val count = line(1).toInt
-      val presence = if (line(3) == "present") true else false
-      Some(mutInfo, count, presence)
-    }
-  }
   
   def main(args: Array[String]){
     
-    val parser = new scopt.OptionParser[Config]("java -jar Ara.jar interpret-DR"){
+    val parser = new scopt.OptionParser[Config]("java -jar ara.jar interpret-DR"){
       opt[String]('m', "markers") required() action { (x, c) => c.copy(snpTyperOutput = x) } text ("Output file of MacawSNPTyper.")
-      opt[String]('o', "output") required() action { (x, c) => c.copy(result = x) } text ("Output name for the file with results.")
+      opt[String]('o', "output") required() action { (x, c) => c.copy(result = x + ".interpret-DR.txt") } text ("Output name for the file with results.")
     }
     
-    class findInList(val ls: List[Marker]){
+    class findInList(val ls: List[DrugMarker]){
       val presentMarkers = ls.filter(_.isPresent)
       def hasResistance = {
         if (presentMarkers.exists(_.markerType == "resistance")) true
@@ -49,7 +32,7 @@ object DrugResistances {
       }
     }
     
-    implicit def checkMarkers(ls: List[Marker]) = new findInList(ls)
+    implicit def checkMarkers(ls: List[DrugMarker]) = new findInList(ls)
     
     parser.parse(args, Config()) map { config =>
       val snpTypes = new File(config.snpTyperOutput)
@@ -59,7 +42,7 @@ object DrugResistances {
       pw.println("# Results drug resistance")
       
       val markers = Source.fromFile(snpTypes).getLines.filterNot(_.startsWith("#")).toList.dropRight(2).map {_ match {
-          case Marker(mutInfo, count, isPresent) => new Marker(mutInfo, count, isPresent)
+          case Marker(mutInfo, count, isPresent) => new DrugMarker(mutInfo, count, isPresent)
       }}.groupBy(_.coordinate)//.map(_._2).toList.sortBy(_(1).coordinate)
       
       //markers.foreach(pw.println)

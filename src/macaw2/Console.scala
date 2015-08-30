@@ -10,7 +10,7 @@ object Console {
         
         case "help" => listInstructions
         case "SNP-typer" => MacawSNPtyper.main(args.drop(1))
-        case "interpret-GT" => MacawUtilities.main(args.drop(1))
+        case "interpret-MI" => MacawUtilities.main(args.drop(1))
         case "interpret-DR" => DrugResistances.main(args.drop(1))
         case _ => listInstructions 
       }
@@ -22,7 +22,7 @@ object Console {
       println("Usage: java -jar ara.jar [instruction] [instruction options...]")
       println("Instructions:")
       println("\tSNP-typer\tDetect presence/absence of SNP markers to detect mixed infection or drug resistance.")
-      println("\tinterpret-GT\tInterpret MTBC hierarchy clusters from SNP-typer results.")
+      println("\tinterpret-MI\tInterpret MTBC hierarchy clusters from SNP-typer results.")
       println("\tinterpret-DR\tInterpret drug resistances from SNP-typer results.")      
     }    
     
