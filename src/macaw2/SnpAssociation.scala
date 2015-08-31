@@ -1,12 +1,10 @@
-//package macaw2
+package macaw2
 
 import scala.io.Source
 import java.io.File
 import java.io.PrintWriter
+import macaw2.Mutation._
 
-/**
- * @author Arlin
- */
 object SnpAssociation {
 
   val usage = "scala SnpAssociation.scala [clusterfile] [pathfile] [reference fastafile]"
@@ -24,19 +22,8 @@ object SnpAssociation {
 
     if (args.size != 3) println(usage) else time {
 
-      object SNP {
-        def unapply(s: String): Option[(String, Int, String)] = {
-          val arr = s.mkString.split("\t")
-          val r = arr(3)
-          val a = arr(4)
-          if (arr(6) == "PASS" && r.length() == 1 && a.length() == 1)
-            Some((r, arr(1).toInt, a))
-          else None
-        }
-      }
-
       def isSNP(line: String): Boolean = line match {
-        case SNP(r, p, a) => true
+        case SNP(r, c, a) => true
         case _ => false
       }
 
@@ -45,17 +32,15 @@ object SnpAssociation {
         if (arr(4) == "." && arr(6) == "PASS") true
         else false
       }
-      
-      
+
       def printTable(header: String, cMap: Map[String, List[Any]]) = {
         println("----------" + header + "----------")
         cMap.map(_._1).toList.sorted.foreach(c => print(c + "\t"))
         println("Total")
-        cMap.toList.sortBy(_._1).foreach(c => c match {case (cName, cList) => print(cList.size + "\t")})
+        cMap.toList.sortBy(_._1).foreach(c => c match { case (cName, cList) => print(cList.size + "\t") })
         println(cMap.flatMap(_._2).size + "\n")
       }
-      
-            
+
       /**
        * Map of clusters. Key = cluster name, value = List of sample names
        */
@@ -75,16 +60,15 @@ object SnpAssociation {
         }).toList
         (name, snps)
       }.toMap
-            
+
       val totalSnps = snpLists.flatMap(s => s._2).toList
       val totalDistinctSnps = totalSnps.distinct.sortBy(snp => snp._2)
-      println(snpLists.size + " Samples" + totalSnps.size + " SNPs in total, of which " + totalDistinctSnps.size + " distinct SNPs in total SNP set.")      
+      println(snpLists.size + " Samples\n" + totalSnps.size + " SNPs in total, of which " + totalDistinctSnps.size + " distinct SNPs in total SNP set.")
 
       printTable("Samples per cluster", clusters)
-      printTable("Distinct SNPs per cluster", clusters.map(c => c match {case (cName, cList) => (cName, cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)))}))
-      printTable("Distinct SNPs per cluster", clusters.map(c => c match {case (cName, cList) => (cName, cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).distinct)}))
-           
-      
+      printTable("Distinct SNPs per cluster", clusters.map(c => c match { case (cName, cList) => (cName, cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample))) }))
+      printTable("Distinct SNPs per cluster", clusters.map(c => c match { case (cName, cList) => (cName, cList.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).distinct) }))
+
       /**
        * Sublineage association
        */
@@ -95,51 +79,49 @@ object SnpAssociation {
             val notcNames = (clusters - cName).flatMap(s => s._2).toList // All other clusters names.
             val notcSnpCounts = notcNames.filterNot(_ == "MT_H37RV_BRD_V5").flatMap(sample => snpLists(sample)).groupBy(identity).mapValues(_.size)
             if (cList.contains("MT_H37RV_BRD_V5")) { //Inverse SNPs indicating the absence of this cluster.
-              val notcSNPs95 = notcSnpCounts.filter(s => s match { 
-                case (snp, count) => (count > notcNames.size * 0.95)  // SNPs in more than 95% of samples in all other clusters.
-              }).map(kv => kv._1).toList 
+              val notcSNPs95 = notcSnpCounts.filter(s => s match {
+                case (snp, count) => (count > notcNames.size * 0.95) // SNPs in more than 95% of samples in all other clusters.
+              }).map(kv => kv._1).toList
               (cName, notcSNPs95.map(snp => if (cSnpCounts.contains(snp)) snp -> cSnpCounts(snp) else snp -> 0).filter(s => s match {
                 case (snp, count) => (count < 0.05 * cName.size)
               }).map(kv => kv._1))
             } else { // SNPs indicating the presence of this cluster.
-              val cSNPs95 = cSnpCounts.filter(s => s match { 
+              val cSNPs95 = cSnpCounts.filter(s => s match {
                 case (snp, count) => (count > cList.size * 0.95) // SNPs in more than 95% of samples in cluster.
-              }).map(kv => kv._1).toList  
+              }).map(kv => kv._1).toList
               (cName, cSNPs95.map(snp => if (notcSnpCounts.contains(snp)) snp -> notcSnpCounts(snp) else snp -> 0).filter(s => s match {
                 case (snp, count) => (count < 0.05 * notcNames.size)
               }).map(kv => kv._1))
             }
           }
         }
-      }  
+      }
       printTable("Cluster specific SNPs", associatedSnps)
-      
-      
+
       /**
        * Remove SNP positions within 10 bp
        */
       val associatedSnpsPos = associatedSnps.flatMap(c => c._2).map(_._2).toList.sorted
-      val associatedSnpsPos2 = associatedSnpsPos.filterNot { x => 
+      val associatedSnpsPos2 = associatedSnpsPos.filterNot { x =>
         val idx = associatedSnpsPos.indexOf(x)
         if (idx == 0) (associatedSnpsPos(idx + 1) - associatedSnpsPos(idx) < 11)
         else if (idx == associatedSnpsPos.size - 1) (associatedSnpsPos(idx) - associatedSnpsPos(idx - 1) < 11)
         else (associatedSnpsPos(idx) - associatedSnpsPos(idx - 1) < 11) || (associatedSnpsPos(idx + 1) - associatedSnpsPos(idx) < 11)
       }
-      
-      val associatedSnps2 = associatedSnps.map{c => 
+
+      val associatedSnps2 = associatedSnps.map { c =>
         c match {
           case (cName, snpList) => {
             (cName -> snpList.filter(snp => associatedSnpsPos2.contains(snp._2)))
           }
-        }  
+        }
       }
       printTable("SNPs not within 10 bp", associatedSnps2)
 
-      
       /**
        * Generate markers
        */
-      
+
       val ref = Source.fromFile(args(2)).getLines.filterNot(_.startsWith(">")).mkString
       val markers = associatedSnps2.map { c =>
         c match {
@@ -153,22 +135,21 @@ object SnpAssociation {
         }
       }
 
-      
       /**
        * Remove non-unique markers
        */
 
       val allMarkers = markers.flatMap(c => c._2).map(_._2).toList
       val mCounts = allMarkers.map(m1 => (m1, allMarkers.count(m2 => m2 == m1))).toMap
-      val selection = markers.map{ c =>
+      val selection = markers.map { c =>
         c match {
           case (cName, snpList) => {
             (cName, snpList.filter(snp => mCounts(snp._2) == 1))
           }
-        }  
+        }
       }
       printTable("Unique Markers", selection)
-      
+
       /**
        * Print SNP selection to file
        */
@@ -180,7 +161,7 @@ object SnpAssociation {
             mList.foreach(m => pw.println(m._1 + "\n" + m._2))
           }
         }
-      } 
+      }
       pw.close
 
     }
