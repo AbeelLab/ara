@@ -1,8 +1,6 @@
 package macaw2
 
-abstract class Marker {
-
-}
+abstract class Marker
 
 object Marker {
   def unapply(s: String): Option[(String, Int, Boolean)] = {
