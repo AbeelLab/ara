@@ -1,5 +1,7 @@
 package macaw2
 
+/** Unapply methods for reading mutations from VCFs*/
+
 abstract class Mutation {
   type Mutation
   type SNP <: Mutation
@@ -15,12 +17,19 @@ object Mutation {
       case SNP(r, c, a) => true
       case _ => false
     }
+    
     def isValid: Boolean = s match {
       case SNP(r, c, a) => true
       case Insertion(r, c, a) => true
       case Deletion(r, c, a) => true
       case MNP(r, c, a) => true
       case _ => false
+    }
+    
+    def invalidSite: Boolean = {
+      val arr = s.split("\t")
+      if (arr(4) == "." && arr(6) == "PASS") true
+      else false
     }
   }
   implicit def seqtoBool(s: String) = new Line(s)
