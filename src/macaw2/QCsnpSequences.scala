@@ -1,11 +1,13 @@
-//package macaw2
+package macaw2
 
 import scala.io.Source
 import java.io.File
 
 /**
- * @author Arlin
+ * Check whether there are snp-sequences in a phy-file with more than 5% of N's in the total sequence. 
+ * 
  */
+
 object QCsnpSequences {
   def main(args: Array[String]) {
 
@@ -14,7 +16,7 @@ object QCsnpSequences {
     }
 
     if (args.length != 1)
-      println("usage: scala QCsnpSequences [phy-file]")
+      println("usage: java -jar ara.jar qc-snp-sequences [phy-file]")
     else {
       val phyFile = Source.fromFile(args(0))
       val lineIterator = phyFile.getLines

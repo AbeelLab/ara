@@ -14,6 +14,7 @@ object Console {
         case "interpret-DR" => DrugResistances.main(args.drop(1))
         case "mutation-rate-DR" => MutationRate.main(args.drop(1))
         case "vcf2snp-phylip" => Vcf2snpPhylip.main(args.drop(1))
+        case "qc-snp-sequences" => QCsnpSequences.main(args.drop(1))
         case _ => listInstructions 
       }
     }
@@ -27,6 +28,7 @@ object Console {
       println("\tinterpret-MI\tInterpret MTBC hierarchy clusters from SNP-typer results.")
       println("\tinterpret-DR\tInterpret drug resistances from SNP-typer results.")
       println("\tmutation-rate-DR\tCount number of mutations within 21 bp window of DR markers given of list of VCFs.")
+      println("\tqc-snp-sequences\tCheck whether there are snp-sequences in a phy-file with more than 5% of N's in the total sequence.")
     }    
     
   }
