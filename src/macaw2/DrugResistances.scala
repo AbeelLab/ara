@@ -17,7 +17,7 @@ object DrugResistances {
     
     val parser = new scopt.OptionParser[Config]("java -jar ara.jar interpret-DR"){
       opt[String]('m', "markers") required() action { (x, c) => c.copy(snpTyperOutput = x) } text ("Output file of MacawSNPTyper.")
-      opt[String]('o', "output") required() action { (x, c) => c.copy(result = x + ".interpret-DR.txt") } text ("Output name for the file with results.")
+      opt[String]('o', "output") required() action { (x, c) => c.copy(result = x + ".interpret-DR.ara") } text ("Output name for the file with results.")
     }
     
     class findInList(val ls: List[DrugMarker]){
@@ -28,6 +28,10 @@ object DrugResistances {
       }
       def hasSusceptibility = {
         if (presentMarkers.exists(_.markerType == "susceptibility")) true
+        else false
+      }
+      def hasUnknown = {
+        if (presentMarkers.exists(_.markerType == "unknown")) true
         else false
       }
     }
@@ -49,7 +53,7 @@ object DrugResistances {
       pw.println(markers.size + " genome positions to detect that are associated with drug susceptibility or resistance.\n")
       
             
-      val resistances = markers.filterNot(_._2.hasSusceptibility).filter(_._2.hasResistance).map(_._2.filter(_.isPresent))
+      val resistances = markers.filterNot(_._2.hasSusceptibility).filter(_._2.hasResistance).map(_._2)
       pw.println(resistances.size + " genome position(s) detected marking only drug resistance:\n")
       resistances.foreach(l => pw.println("\t" + l.mkString("\n\t") + "\n"))
       

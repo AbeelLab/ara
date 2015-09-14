@@ -18,7 +18,7 @@ object MacawUtilities {
     
     val parser = new scopt.OptionParser[Config]("java -jar ara.jar interpret-GT") {
       opt[String]('m', "markers") required() action { (x, c) => c.copy(snpTyperOutput = x) } text ("Output file of MacawSNPTyper.")
-      opt[String]('o', "output") required() action { (x, c) => c.copy(result = x + ".interpret-MI.txt") } text ("Output name for the file with results.")
+      opt[String]('o', "output") required() action { (x, c) => c.copy(result = x + ".interpret-MI.ara") } text ("Output name for the file with results.")
     }
     
     parser.parse(args, Config()) map { config =>

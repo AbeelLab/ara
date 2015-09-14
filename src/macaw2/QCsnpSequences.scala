@@ -25,7 +25,7 @@ object QCsnpSequences {
       val countList = lineIterator.map(line => (line.substring(0, 9), countN(line.substring(10)))).toList
       
       val excludeList = countList.filter(s => (s._2.toFloat / totalSeqSize) >= 0.05)
-      println(excludeList.size + "Files to exclude: ")  
+      println(excludeList.size + " Files to exclude.")  
       excludeList.foreach(s => println(s._1 + " with " + s._2 + " Ns.") )
     }
 

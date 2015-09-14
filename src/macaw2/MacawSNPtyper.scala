@@ -68,7 +68,9 @@ object MacawSNPtyper extends Tool {
       val lines = if (config.markerFile != null) tLines(config.markerFile).toList 
         else if (config.typer == "mixed-infection") scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/RomanosMarkers.txt")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
         else scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/drMarkers.txt")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
-      val pw = if (config.outputFile != null) new PrintWriter(config.outputFile) else new PrintWriter(System.out)
+      val pw = if (config.outputFile != null && config.typer == "mixed-infection") new PrintWriter(config.outputFile + ".MI.ara")
+      else if (config.outputFile != null && config.typer == "drug-resistance") new PrintWriter(config.outputFile + ".DR.ara") 
+      else new PrintWriter(System.out)
 
       pw.println(generatorInfo)
 

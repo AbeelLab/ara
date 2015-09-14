@@ -27,6 +27,8 @@ object Vcf2snpPhylip {
     /** Get all SNP positions */
     def getPositions(fList: List[File]): Map[Int, String] = {
       def getPos(file: File): List[(Int, String)] = {
+        val sample = file.getParentFile
+        println("Reading " + sample.getParentFile.getName + ", " + sample.getName + "...")
         val snpIterator = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(_.invalidSite).filter(_.isSNP)
         snpIterator.map(_ match {
           case SNP(r, c, a) => (c, r)
@@ -74,6 +76,7 @@ object Vcf2snpPhylip {
           }
         }
         println("Total of " + fileList.size + " VCFs read.")
+        println("Length of SNP sequences: " + refMap.size)
         println("Output: " + args(1))
       }
       case _ => println(usage)

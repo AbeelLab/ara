@@ -15,9 +15,13 @@ object Marker {
 case class DrugMarker(val mutInfo: String, val count: Int, val isPresent: Boolean) extends Marker {
   override def toString(): String = mutInfo + "\t" + count + "\t" + (if (isPresent) "present" else "absent")
   val arr = mutInfo.split("_")
-  val coordinate = arr(0).drop(1).dropRight(1).toInt
-  val markerType = arr(1)
-  val drugs = arr(2)
+  val snp = arr(0)
+  val coordinate = snp.drop(1).dropRight(1).toInt
+  val alt = snp.drop(snp.length - 1)
+  val locus = arr(1)
+  val sOrNs = arr(2)
+  val markerType = arr(3)
+  val drugs = arr(4)
 }
 
 case class ClusterMarker(val mutInfo: String, val count: Int, val isPresent: Boolean) extends Marker {
