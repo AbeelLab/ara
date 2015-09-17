@@ -9,13 +9,15 @@ import macaw2.Gene._
  * Reads only SNPs from drug resistance list, and produces markers
  */
 
-object DrugResistanceMarkers {
+object DrugResistanceMarkers extends CodonConfig{
 
   case class Config(
     val drList: File = null,
     val fasta: File = null,
     val output: String = null,
-    val gff: File = null)
+    val gff: File = null,
+    val supportingRefs: Int = 5
+    )
 
   def main(args: Array[String]) {
 
@@ -24,13 +26,15 @@ object DrugResistanceMarkers {
       opt[File]("ref") required () action { (x, c) => c.copy(fasta = x) } text ("Reference fasta file.")
       opt[String]('o', "output") required () action { (x, c) => c.copy(output = x) } text ("Name of output file.")
       opt[File]("gff") required () action { (x, c) => c.copy(gff = x) } text ("gff-file corresponding to reference fasta-file.")
-    }
+      opt[Int]("supRef") action { (x, c) => c.copy(supportingRefs = x) } text ("Threshold to include SNPs based on number of supporting references. Default = 5")
+      }
 
     parser.parse(args, Config()) map { config =>
 
       val ref = Source.fromFile(config.fasta).getLines.filterNot(_.startsWith(">")).mkString
-
-
+      val supRef = config.supportingRefs
+      println("supRef: " + supRef)
+      
       class DRsnp(val drug: String, val locus: String, val locusTag: String, val r: String, val p: Int, val a: String, val cause: String) extends Ordered[DRsnp] {
         override def toString(): String = ">" + r + p + a + "_" + locus + "_" + cause + "_" + drug
         def complementToString(drugs: String): String = ">" + r + p + r + "_susceptibility_" + drugs
@@ -46,12 +50,14 @@ object DrugResistanceMarkers {
             val drug = sArr(0)
             val locus = if (sArr(1).contains("_")) sArr(1).split("_").mkString("-") else sArr(1)
             val locusTag = sArr(8)
+            val totalSources = sArr(9).split(";").size
+            println("totalsources: " + totalSources)
             val nChange = sArr(4)
             val ncArr = nChange.split("/")
             val r = ncArr(0)
             val a = ncArr(1)
             val nucleotides = Array[String]("A", "C", "T", "G")
-            if (nucleotides.contains(r) && nucleotides.contains(a))
+            if (nucleotides.contains(r) && nucleotides.contains(a) && totalSources >= supRef)
               Some((drug, locus, locusTag, r, chrPos.toInt, a))
             else None
           } else None
@@ -83,30 +89,7 @@ object DrugResistanceMarkers {
 
       implicit def seqToSeq(s: String) = new compSeq(s)
 
-      val codonMap = Map("TTT" -> "F", "TTC" -> "F",
-        "TTA" -> "L", "TTG" -> "L", "CTT" -> "L", "CTC" -> "L", "CTA" -> "L", "CTG" -> "L",
-        "ATT" -> "I", "ATC" -> "I", "ATA" -> "I",
-        "ATG" -> "M",
-        "GTT" -> "V", "GTC" -> "V", "GTA" -> "V", "GTG" -> "V",
-        "TCT" -> "S", "TCC" -> "S", "TCA" -> "S", "TCG" -> "S",
-        "CCT" -> "P", "CCC" -> "P", "CCA" -> "P", "CCG" -> "P",
-        "ACT" -> "T", "ACC" -> "T", "ACA" -> "T", "ACG" -> "T",
-        "GCT" -> "A", "GCC" -> "A", "GCA" -> "A", "GCG" -> "A",
-        "TAT" -> "Y", "TAC" -> "Y",
-        "TAA" -> "*", "TAG" -> "*",
-        "CAT" -> "H", "CAC" -> "H",
-        "CAA" -> "Q", "CAG" -> "Q",
-        "AAT" -> "N", "AAC" -> "N",
-        "AAA" -> "K", "AAG" -> "K",
-        "GAT" -> "D", "GAC" -> "D",
-        "GAA" -> "E", "GAG" -> "E",
-        "TGT" -> "C", "TGC" -> "C",
-        "TGA" -> "*",
-        "TGG" -> "W",
-        "CGT" -> "R", "CGC" -> "R", "CGA" -> "R", "CGG" -> "R",
-        "AGT" -> "S", "AGC" -> "S",
-        "AGA" -> "R", "AGG" -> "R",
-        "GGT" -> "G", "GGC" -> "G", "GGA" -> "G", "GGG" -> "G")
+
 
       val drList = Source.fromFile(config.drList).getLines.filterNot(_.startsWith("#")).filter(_.isSNP).map { line =>
         line match {
@@ -216,7 +199,7 @@ object DrugResistanceMarkers {
           mList :+ (">" + r + pos + r + "_" + locus + "_" + "-" + "_susceptibility_" + drugs, ref.substring(pos - 11, pos + 10))
       })
 
-      markers.foreach(println)
+      //markers.foreach(println)
       println(markers.size + " markers")
 
       /**
