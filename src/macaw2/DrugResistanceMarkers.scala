@@ -4,6 +4,7 @@ import scala.io.Source
 import java.io.File
 import java.io.PrintWriter
 import macaw2.Gene._
+import java.util.Calendar
 
 /**
  * Reads only SNPs from drug resistance list, and produces markers
@@ -33,7 +34,6 @@ object DrugResistanceMarkers extends CodonConfig{
 
       val ref = Source.fromFile(config.fasta).getLines.filterNot(_.startsWith(">")).mkString
       val supRef = config.supportingRefs
-      println("supRef: " + supRef)
       
       class DRsnp(val drug: String, val locus: String, val locusTag: String, val r: String, val p: Int, val a: String, val cause: String) extends Ordered[DRsnp] {
         override def toString(): String = ">" + r + p + a + "_" + locus + "_" + cause + "_" + drug
@@ -51,7 +51,6 @@ object DrugResistanceMarkers extends CodonConfig{
             val locus = if (sArr(1).contains("_")) sArr(1).split("_").mkString("-") else sArr(1)
             val locusTag = sArr(8)
             val totalSources = sArr(9).split(";").size
-            println("totalsources: " + totalSources)
             val nChange = sArr(4)
             val ncArr = nChange.split("/")
             val r = ncArr(0)
@@ -216,6 +215,8 @@ object DrugResistanceMarkers extends CodonConfig{
       /** Print unique markers to output file. */
       val pw = new PrintWriter(new File(config.output))
       pw.println("# Drug resistance markers")
+      pw.println("# SNPs with at least " + supRef + " supporting sources.")
+      pw.println("# Compiled: " + Calendar.getInstance.getTime)
       markers.foreach(_ match {
         case (id, marker) => pw.println(id + "\n" + marker)
       })

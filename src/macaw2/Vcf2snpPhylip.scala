@@ -8,6 +8,7 @@ import macaw2.Mutation._
 
 /**
  * This tool reads VCFs from the path file, and returns a SNP phy-file.
+ * It does not remove samples with duplicate names.
  */
 object Vcf2snpPhylip {
   val usage = "java -jar ara.jar vcf2snp-phylip [pathfile] [output.phy]"

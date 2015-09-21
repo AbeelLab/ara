@@ -15,7 +15,10 @@ object DRMap {
     val drList: File = null,
     val fasta: File = null,
     val output: String = null,
-    val gff: File = null)
+    val gff: File = null
+  )
+    
+    
   def main(args: Array[String]) {
 
     val parser = new scopt.OptionParser[Config]("java -jar ara.jar dr-markers") {
@@ -96,7 +99,7 @@ object DRMap {
       //gff.toList.sortBy(_._1).foreach(println)
       //println("\ngff.size: " + gff.size)
 
-      /** Get Gene info for each locus, and group genes together if they are within 100 bp of each other. */
+      /** Get Gene info for each locus, and group genes together if they are within 1000 bp of each other. */
       def ranges(ls: List[(Gene, String)], range: Int): List[List[(Gene, String)]] = ls match {
         case head :: tail => {
           var (b, a) = ls.span(p => head._1.end + range > p._1.start - range)
@@ -113,17 +116,17 @@ object DRMap {
 
       
       val genes = allGenes.map(g => (gff(g._1), g._2)).sortBy(_._1.start)
-      val allRanges = ranges(genes, 100)
+      val allRanges = ranges(genes, 1000)
       allRanges.foreach(println)
       println("\nallRanges.size: " + allRanges.size)
       println("\n" + allRanges.flatMap(g => g).size + " genes")
    
-      /** Print multi-fasta file, each gene and 100 bp flanking regions. */
+      /** Print multi-fasta file, each gene and 1000 bp flanking regions. */
      allRanges.foreach { g =>
-        val start = g.head._1.start - 100
-        val end = g.last._1.end + 100
+        val start = g.head._1.start - 1000
+        val end = g.last._1.end + 1000
         val genes = g.map(_._2).mkString("_")
-        pw.println(refName + ", genome region with " + genes + " and 100 bp flanking regions, genome coordination " + start + "-" + end)
+        pw.println(refName + ", genome region with " + genes + " and 1000 bp flanking regions, genome coordination " + start + "-" + end)
         refGenome.substring(start - 1, end).grouped(80).foreach(pw.println)
         pw.println
       }

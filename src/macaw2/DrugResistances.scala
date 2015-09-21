@@ -80,8 +80,7 @@ object DrugResistances {
       within10bp.map(_.filter(_.markerType == "susceptibility")).foreach{ pList =>
         val drugs = pList.flatMap(_.drugs.split("_").toList).distinct
         val coordinates = pList.map(_.coordinate)
-        if (coordinates.size > 1) pw.println("\tPossible resistance to " + drugs.mkString(", ") + " caused by one or more SNPs at genome coordinations " + coordinates.mkString(", ") + ".")
-        else pw.println("\tPossible resistance to " + drugs.mkString(", ") + " caused by a SNP at genome coordination " + coordinates.mkString + " that is not included in the drug resistance list.")
+        pw.println("\tPossible resistance to " + drugs.mkString(", ") + " caused by one or more SNPs within 10 bp of genome coordinations " + coordinates.mkString(", ") + ".")        
       }
       pw.println
       
