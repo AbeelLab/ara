@@ -21,7 +21,7 @@ object DRMap {
     
   def main(args: Array[String]) {
 
-    val parser = new scopt.OptionParser[Config]("java -jar ara.jar dr-markers") {
+    val parser = new scopt.OptionParser[Config]("java -jar ara.jar ref-DR-region") {
       opt[File]('i', "input") required () action { (x, c) => c.copy(drList = x) } text ("List of TB drug resistances.")
       opt[File]("ref") required () action { (x, c) => c.copy(fasta = x) } text ("Reference fasta file.")
       opt[String]('o', "output") required () action { (x, c) => c.copy(output = x) } text ("name of output file.")
@@ -125,8 +125,8 @@ object DRMap {
      allRanges.foreach { g =>
         val start = g.head._1.start - 1000
         val end = g.last._1.end + 1000
-        val genes = g.map(_._2).mkString("_")
-        pw.println(refName + ", genome region with " + genes + " and 1000 bp flanking regions, genome coordination " + start + "-" + end)
+        val genes = g.map(_._2).mkString("/")
+        pw.println(refName + "_" + genes + "_" + start + "-" + end)
         refGenome.substring(start - 1, end).grouped(80).foreach(pw.println)
         pw.println
       }

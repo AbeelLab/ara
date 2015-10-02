@@ -17,6 +17,8 @@ object Console {
         case "qc-snp-sequences" => QCsnpSequences.main(args.drop(1))
         case "qc-snp-fasta" =>QCsnpFasta.main(args.drop(1))
         case "dr-markers" => DrugResistanceMarkers.main(args.drop(1))
+        case "hier-clusters" => HierClusters.main(args.drop(1))
+        case "ref-DR-region" => DRMap.main(args.drop(1))
         case _ => listInstructions 
       }
     }
@@ -26,14 +28,16 @@ object Console {
     def listInstructions() {
       println("Usage: java -jar ara.jar [instruction] [instruction options...]")
       println("Instructions:")
-      println("\tSNP-typer\t\tDetect presence/absence of SNP markers to detect mixed infection or drug resistance.")
+      println("\tSNP-typer\t\tDetect presence/absence of SNP markers to detect mixed infection/drug resistance.")
       println("\tinterpret-MI\t\tInterpret MTBC hierarchy clusters from SNP-typer results.")
       println("\tinterpret-DR\t\tInterpret drug resistances from SNP-typer results.")
       println("\tvcf2snp-phylip\t\tWrite phy-file from SNP sequences.")
-      println("\tmutation-rate-DR\tCount number of mutations within 21 bp window of DR markers given of list of VCFs.")
-      println("\tqc-snp-sequences\tCheck whether there are snp-sequences in a phy-file with more than 5% of N's in the total sequence.")
+      println("\tmutation-rate-DR\tCount mutations within 21 bp window of DR markers given of list of VCFs.")
+      println("\tqc-snp-sequences\tCheck snp-sequences (phy-file) with >0.05 unknown bases N.")
       println("\tqc-snp-fasta\t\tCheck length or N-content of multi fasta-file with SNP sequences.")
-      println("\tdr-markers\t\tCreate drug resistance and susceptibility markers from a list with TB drug resistances.")
+      println("\tdr-markers\t\tCreate 21bp markers from a list with known TB drug resistance mutations.")
+      println("\thier-clusters\t\tHierarchical clustering of tree, given lineage information.")
+      println("\tref-DR-region\t\tCreate minimized version of reference genome containing known DR regions.")
     }    
     
   }
