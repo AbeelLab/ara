@@ -10,7 +10,7 @@
 
     <property
         name="manifest.mainClass"
-        value="macaw2.Console" />
+        value="ara.Console" />
 
     <property
         name="src"
