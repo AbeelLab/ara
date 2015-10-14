@@ -108,7 +108,7 @@ object HierClusters {
             val cName = if (c.last.contains("-")) c.last else c.filterNot(_.contains("-")).mkString(".")
             (s, cName)
           }.groupBy(_._2).mapValues(s => s.map(_._1))          
-          val cpw = new PrintWriter(new File(config.out + "/" + clusters.keys.mkString("_") + ".clusters"))
+          val cpw = new PrintWriter(new File(config.out + "/" + clusters.keys.mkString("_") + "_clusters"))
           cpw.println("# Hierarchical clusters ")
           cpw.println("# " + clusters.map(_ match { case (c, ls) => (c + "(N=" + ls.size + ")")}).mkString("\n# "))
           cpw.println("# Command: java -jar ara.jar hier-clusters " + args.mkString(" "))
@@ -130,7 +130,7 @@ object HierClusters {
       readRecursive(t.root, 0)
 
       /** Print all samples and all clusters to a file with user-defined output file name. */
-      val pw = new PrintWriter(new File(config.out + "/" + config.out + ".clusters"))
+      val pw = new PrintWriter(new File(config.out + "/" + config.out + "_clusters"))
       pw.println("# Hierarchical clusters")
       pw.println("# Total samples: " + totalTaxa)
       pw.println("# Command: java -jar ara.jar hier-clusters " + args.mkString(" "))
