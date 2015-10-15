@@ -20,6 +20,7 @@ object Console {
         case "hier-clusters" => HierClusters.main(args.drop(1))
         case "ref-DR-region" => DRMap.main(args.drop(1))
         case "prepare-drmapping" => PrepareDRMapping.main(args.drop(1))
+        case "prepare-bluejay" => PrepareBlueJay.main(args.drop(1))
         case _ => listInstructions 
       }
     }
@@ -38,8 +39,9 @@ object Console {
       println("\tqc-snp-fasta\t\tCheck length or N-content of multi fasta-file with SNP sequences.")
       println("\tdr-markers\t\tCreate 21bp markers from a list with known TB drug resistance mutations.")
       println("\thier-clusters\t\tHierarchical clustering of tree, given lineage information.")
-      println("\tref-DR-region\t\tCreate minimized version of reference genome containing known DR regions.")
+      println("\tref-DR-region\t\tCreate minimized version of reference genome containing known DR-regions.")
       println("\tprepare-drmapping\tPrepare slurm script for each sample to detect drug resistance.")
+      println("\tprepare-bluejay\tPrepare slurm script for hierarchical clusters for SNP-association.")
     }    
     
   }

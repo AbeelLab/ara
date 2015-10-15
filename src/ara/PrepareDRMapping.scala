@@ -34,7 +34,7 @@ object PrepareDRMapping {
         val sample = rvcf.getParentFile
         val bamfiles = sample.list().filter(_.endsWith(".sorted.bam"))
         val cmd = Source.fromFile(rvcf).getLines.toList(3).dropRight(1).split(" ").drop(8).grouped(2).toList.map{b => 
-          val bam = b(1).split("/")(1)
+          val bam = b(1).split("/").last
           b(0) + " " + bam.dropRight(11) + ".dr-region" + bam.takeRight(11)
         }.mkString(" ")
         mainpw.println("sbatch ./" + sample.getName + "/dr-region." + sample.getName + ".sh")
@@ -63,6 +63,9 @@ object PrepareDRMapping {
       }
 
       mainpw.close
+      
+      println("Finished preparing SLURM scripts for " + dir)
+      
     }
 
   }

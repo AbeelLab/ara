@@ -1,4 +1,4 @@
-//package ara
+package ara
 
 import java.io.File
 import java.io.PrintWriter
@@ -32,7 +32,7 @@ object PrepareBlueJay {
       pw1.println("#!/bin/bash")
       pw1.println("#SBATCH --job-name=BJ_linMatrix")
       pw1.println("#SBATCH --workdir=" + outputDir)
-      pw1.println("#SBATCH --partition=long --qos=long")
+      pw1.println("#SBATCH --partition=short --qos=short")
       pw1.println("#SBATCH --mem=10000")
       pw1.println
       clusterFiles.foreach { cFile =>
