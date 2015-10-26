@@ -1,6 +1,6 @@
 package ara
 
-/** Unapply methods for reading mutations from VCFs*/
+/** Unapply methods for reading mutations from reduced VCFs*/
 
 abstract class Mutation {
   type Mutation
