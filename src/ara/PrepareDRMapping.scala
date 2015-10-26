@@ -7,12 +7,13 @@ import scala.io.Source
 object PrepareDRMapping {
 
   case class Config(
-    val directory: File = null)
+    val directory: File = null, samplesToSkip: File = null)
 
   def main(args: Array[String]) {
 
-    val parser = new scopt.OptionParser[Config]("java -jar ara.jar") {
+    val parser = new scopt.OptionParser[Config]("java -jar ara.jar prepare-drmapping") {
       opt[File]('d', "directory") required () action { (x, c) => c.copy(directory = x) } text ("Directory with samples.")
+      opt[File]("skip-samples") action { (x, c) => c.copy(samplesToSkip = x) } text ("File with samples to skip.")
     }
 
     parser.parse(args, Config()) map { config =>
@@ -28,9 +29,11 @@ object PrepareDRMapping {
       val mainpw = new PrintWriter(new File(dir.getPath + "/dr-region-TU.sh"))
       mainpw.println("#!/bin/bash")
       mainpw.println
-      
-      val samples = listFiles(dir)
+            
+      val samples = if (config.samplesToSkip != null) listFiles(dir).filterNot(s => Source.fromFile(config.samplesToSkip).getLines.contains(s.getParentFile.getName)) else listFiles(dir)
+      var count = 0
       samples.foreach { rvcf =>
+        count = count + 1
         val sample = rvcf.getParentFile
         val bamfiles = sample.list().filter(_.endsWith(".sorted.bam"))
         val cmd = Source.fromFile(rvcf).getLines.toList(3).dropRight(1).split(" ").drop(8).grouped(2).toList.map{b => 
@@ -38,12 +41,14 @@ object PrepareDRMapping {
           b(0) + " " + bam.dropRight(11) + ".dr-region" + bam.takeRight(11)
         }.mkString(" ")
         mainpw.println("sbatch ./" + sample.getName + "/dr-region." + sample.getName + ".sh")
+        if (count % 200 == 0) mainpw.println("sleep 90m")
         val pw = new PrintWriter(new File(sample + "/dr-region." + sample.getName + ".sh"))
         pw.println("#!/bin/bash")
         pw.println("#SBATCH --job-name=dr-region_" + sample.getName)
         pw.println("#SBATCH --workdir=" + sample)
         pw.println("#SBATCH --partition=short --qos=short")
-        pw.println("#SBATCH --mem=15000")
+        pw.println("#SBATCH --mem=" + (if (bamfiles.size > 2) bamfiles.size * 2000 else 4000))
+        pw.println("#SBATCH --output=pilon.dr-region.out")
         pw.println
         pw.println("# Map bam-files")
         bamfiles.foreach { bam =>
