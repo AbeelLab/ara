@@ -4,6 +4,7 @@ import scala.io.Source
 import java.io.File
 import java.io.PrintWriter
 import ara.Gene._
+import ara.DRsnp._
 
 /**
  * Create minimized version of reference genome H37Rv that consists of genes and their flanking regions containing drug resistances from the list.
@@ -36,46 +37,10 @@ object DRMap {
       val refGenome = ref.filterNot(_.startsWith(">")).mkString
       val pw = new PrintWriter(new File(config.output))
 
-      /** class and object to read locus information from DR list. */
-      class DRsnp(val drug: String, val locus: String, val locusTag: String, val r: String, val p: Int, val a: String, val cause: String) extends Ordered[DRsnp] {
-        override def toString(): String = ">" + r + p + a + "_" + locus + "_" + cause + "_" + drug
-        def complementToString(drugs: String): String = ">" + r + p + r + "_susceptibility_" + drugs
-        def compare(that: DRsnp): Int = this.p compare that.p
-      }
-
-      object DRsnp {
-        def unapply(s: String): Option[(String, String, String, String, Int, String)] = {
-          val sArr = s.mkString.split("\t")
-          val chrPos = sArr(2)
-          if (!chrPos.contains("/") && !chrPos.equals("-")) {
-            val drug = sArr(0)
-            val locus = if (sArr(1).contains("_")) sArr(1).split("_").mkString("-") else sArr(1)
-            val locusTag = sArr(8)
-            val nChange = sArr(4)
-            val ncArr = nChange.split("/")
-            val r = ncArr(0)
-            val a = ncArr(1)
-            val nucleotides = Array[String]("A", "C", "T", "G")
-            if (nucleotides.contains(r) && nucleotides.contains(a))
-              Some((drug, locus, locusTag, r, chrPos.toInt, a))
-            else None
-          } else None
-        }
-      }
-
-      class Mutation(s: String) {
-        def isSNP: Boolean = s match {
-          case DRsnp(d, l, lt, r, p, a) => true
-          case _ => false
-        }
-      }
-
-      implicit def seqtoBool(s: String) = new Mutation(s)
-
       /** Read SNPs from DR list */
       val drList = Source.fromFile(config.drList).getLines.filterNot(_.startsWith("#")).filter(_.isSNP).map { line =>
         line match {
-          case DRsnp(d, l, lt, r, p, a) => new DRsnp(d, l, lt, r, p, a, "resistance")
+          case DRsnp(d, l, lt, cp, r, gp, a) => new DRsnp(d, l, lt, cp, r, gp, a)
         }
       }.toList
 
