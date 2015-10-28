@@ -1,0 +1,171 @@
+package ara
+
+import java.io.File
+import java.io.PrintWriter
+import scala.io.Source
+import ara.DRsnp._
+import atk.compbio.gff._
+
+object DrugResistanceSnps extends CodonConfig {
+
+  case class Config(val vcf: File = null, val gff: File = null, val fasta: File = null)
+
+  def main(args: Array[String]) {
+
+    val parser = new scopt.OptionParser[Config]("java -jar ara.jar dr-snps") {
+      opt[File]("vcf") required () action { (x, c) => c.copy(vcf = x) } text ("VCF-file")
+      opt[File]("gff") required () action { (x, c) => c.copy(gff = x) } text ("GFF-file")
+      opt[File]("fasta") required () action { (x, c) => c.copy(fasta = x) } text ("Fasta-file")
+    }
+
+    val drlist = scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/Coll2015DrugResistances.txt")).getLines().filterNot(_.startsWith("#")).filter(_.isSNP).map { line =>
+      line match {
+        case DRsnp(d, l, lt, cp, r, gp, a) => new DRsnp(d, l, lt, cp, r, gp, a)
+      }
+    }.toList
+    val locusTag = drlist.map(d => ((if (d.locus.endsWith("-promoter")) d.locus.dropRight(9) else d.locus) -> d.locusTag)).toMap
+    val associatedDrug = drlist.map(d => ((if (d.locus.endsWith("-promoter")) d.locus.dropRight(9) else d.locus) -> d.drug)).toMap
+
+    /** Find gene region of SNP position */
+    def getLocus(cp: Int, lociList: List[(String, GFFLine)], ref: String, alt: String): List[Map[String, Any]] = {
+      val loci = lociList.sortBy(_._2.start)      
+      
+      val l = (0 until loci.size).map { idx =>
+        val locus = loci(idx)._1
+        val drug = associatedDrug(locus)
+        val strand = loci(idx)._2.line.split("\t")(6)
+        val start = loci(idx)._2.start
+        val end = loci(idx)._2.end
+        if (strand.equals("+")) {
+          if (idx == 0) {
+            if (cp < start) Map("locus" -> (locus + "-promoter"), "drug" -> drug, "gene-coordinate" -> (cp - start), "nucleotide-change" -> (ref + "/" + alt))
+            else if (cp >= start && cp <= end) Map("locus" -> locus, "drug" -> drug, "gene-coordinate" -> (cp - start + 1), "nucleotide-change" -> (ref + "/" + alt))
+            else if (loci.size == 1 && cp > end) Map("locus" -> (locus + "-tail"), "drug" -> drug, "gene-coordinate" -> (end - cp), "nucleotide-change" -> (ref + "/" + alt))
+            else (null)
+          } else if (idx == loci.size - 1) {
+            if (cp < start && cp > loci(idx - 1)._2.end) Map("locus" -> (locus + "-promoter"), "drug" -> drug, "gene-coordinate" -> (cp - start), "nucleotide-change" -> (ref + "/" + alt))
+            else if (cp >= start && cp <= end) Map("locus" -> locus, "drug" -> drug, "gene-coordinate" -> (cp - start + 1), "nucleotide-change" -> (ref + "/" + alt))
+            else if (cp > end) Map("locus" -> (locus + "-tail"), "drug" -> drug, "gene-coordinate" -> (cp - start + 1), "nucleotide-change" -> (ref + "/" + alt))
+            else (null)
+          } else {
+            if (cp < start && cp > loci(idx - 1)._2.end) Map("locus" -> (locus + "-promoter"), "drug" -> drug, "gene-coordinate" -> (cp - start), "nucleotide-change" -> (ref + "/" + alt))
+            else if (cp >= start && cp <= end) Map("locus" -> locus, "drug" -> drug, "gene-coordinate" -> (cp - start + 1), "nucleotide-change" -> (ref + "/" + alt))
+            else (null)
+          }
+        } else { //negative strand
+          if (idx == loci.size - 1) {
+            if (cp > end) Map("locus" -> (locus + "-promoter"), "drug" -> drug, "gene-coordinate" -> (end - cp), "nucleotide-change" -> (complement(ref) + "/" + complement(alt)))
+            else if (cp >= start && cp <= end) Map("locus" -> locus, "drug" -> drug,  "gene-coordinate" -> (end - cp + 1), "nucleotide-change" -> (complement(ref) + "/" + complement(alt)))
+            else if (cp < start && loci.size == 1) Map("locus" -> (locus + "-tail"), "drug" -> drug, "gene-coordinate" -> (end - cp + 1), "nucleotide-change" ->  (complement(ref) + "/" + complement(alt)))
+            else (null)
+          } else if (idx == 0) {
+            if (cp < start) Map("locus" -> (locus + "-tail"), "drug" -> drug, "gene-coordinate" -> (end - cp + 1), "nucleotide-change" -> (complement(ref) + "/" + complement(alt)))
+            else if (cp >= start && cp <= end) Map("locus" -> locus, "drug" -> drug, "gene-coordinate" -> (end - cp + 1), "nucleotide-change" -> (complement(ref) + "/" + complement(alt)))
+            else if (cp > end && cp < loci(idx + 1)._2.start) Map("locus" -> (locus + "-promoter"), "drug" -> drug, "gene-coordinate" -> (end - cp), "nucleotide-change" -> (complement(ref) + "/" + complement(alt)))
+            else (null)
+          } else {
+            if (cp > end && cp < loci(idx + 1)._2.start) Map("locus" -> (locus + "-promoter"), "drug" -> drug, "gene-coordinate" -> (end - cp), "nucleotide-change" -> (complement(ref) + "/" + complement(alt)))
+            else if (cp >= start && cp <= end) Map("locus" -> locus, "drug" -> drug, "gene-coordinate" -> (end - cp + 1), "nucleotide-change" -> (complement(ref) + "/" + complement(alt)))
+            else (null)
+          }
+        }
+      }.toList
+      l.filterNot(_ == null)
+    }
+
+    def complement(seq: String) = {
+      seq.map { c =>
+        c match {
+          case 'A' => 'T'
+          case 'T' => 'A'
+          case 'C' => 'G'
+          case 'G' => 'C'
+          case _ => 'N'
+        }
+      }.mkString
+    }
+
+    class DetectedSNP(val region: String, val pos: Int, val ref: String, val alt: String, val filter: String, val ac: String) {
+      val regionArr = region.split("_")
+      val geneNames = regionArr(4)
+      val chrPos = regionArr.last.split("-")(0).toInt + pos - 1
+      val loci = geneNames.split("/")
+
+      override def toString(): String = region + "\t" + chrPos + "\t" + ref + "/" + alt + "\t" + filter
+    }
+
+    object DetectedSNP {
+      /** Only filter SNPs */
+      def unapply(line: String): Option[(String, Int, String, String, String, String)] = {
+        val arr = line.mkString.split("\t")
+        val region = arr(0)
+        val pos = arr(1).toInt
+        val ref = arr(3)
+        val alt = arr(4)
+        val filter = arr(6)
+        val nucleotides = Array[String]("A", "C", "T", "G")
+        if (nucleotides.contains(ref) && nucleotides.contains(alt)) {
+          val info = arr(7).split(";")
+          val bc = info(5)
+          val qp = info(6)
+          val ac = info(11)
+          Some((region, pos, ref, alt, filter, ac))
+        } //if (ac == "AC=1" || ac == "AC=2") Some((region, pos, ref, alt, filter, ac))
+        else None
+      }
+    }    
+    
+    def isDetectedSNP(str: String): Boolean = str match {
+      case DetectedSNP(g, r, gp, a, f, i) => true
+      case _ => false
+    }
+
+    parser.parse(args, Config()) map { config =>
+      
+      val gff = GFFFile(config.gff).filterNot(_.kind.equals("CDS")).filterNot(_.kind.equals("source")).filterNot(_.line.split("\t")(8).startsWith("note="))
+      val gffGenes = gff.map(g => (g.attributes("locus_tag").split(""""""")(1) -> g)).toMap
+      
+      val ref = Source.fromFile(config.fasta).getLines.filterNot(_.startsWith(">")).mkString
+      
+
+      val snps = Source.fromFile(config.vcf).getLines.filterNot(_.startsWith("#")).filter(isDetectedSNP(_)).map(line => line match {
+        case DetectedSNP(g, p, r, a, f, ac) => new DetectedSNP(g, p, r, a, f, ac)
+      })
+
+      println("#Detected mutations ")
+      println("#Drug\tLocus\tChromosome Coordinate\tGene Coordinate\tNucleotide Change\tCodon Number\tCodon Change\tAmino Acid Change")
+      snps.foreach { snp =>
+        //println(snp)
+        val loci = snp.loci.map{ locus => (locus, gffGenes(locusTag(locus))) }.toList
+        //loci.foreach(println)
+        
+        
+        val locus = getLocus(snp.chrPos, loci, snp.ref, snp.alt)
+        locus.foreach{l =>
+          val (codonNumber, codonChange, aminoAcidChange) = {//codonChange on forward strand
+            val locusName = l("locus").asInstanceOf[String]
+            if (locusName.endsWith("-tail") || locusName.endsWith("-promoter") || locusName.equals("rrl") || locusName.equals("rrs")) {
+              ("-", "-", "-")
+            } else {
+              val gc = ((l("gene-coordinate")).asInstanceOf[Int])
+              val codonPosition = (gc + 2) % 3 + 1
+              val cc = {
+                if (codonPosition == 1) ref.substring(snp.chrPos - 1, snp.chrPos + 2) + "/" + snp.alt + ref.substring(snp.chrPos, snp.chrPos + 2)
+                else if (codonPosition == 2) ref.substring(snp.chrPos - 2, snp.chrPos + 1) + "/" +  ref.charAt(snp.chrPos - 2) + snp.alt + ref.charAt(snp.chrPos)
+                else ref.substring(snp.chrPos - 3, snp.chrPos) + "/" + ref.substring(snp.chrPos - 3, snp.chrPos - 1) + snp.alt
+              }
+              ((gc + 2) / 3, cc, cc.split("/").map(codonMap(_)).mkString("/"))
+            }}
+          println(l("drug") + "\t" + l("locus") + "\t" + snp.chrPos + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + codonNumber + "\t" + codonChange + "\t" + aminoAcidChange)
+        }
+        
+        //val knownSnp = if (drlist.map(_.cp).contains(snp.chrPos)) drlist.groupBy(_.cp)(snp.chrPos) else "unknown snp"
+        //println(knownSnp)
+        
+
+      }
+
+    }
+
+  }
+}
