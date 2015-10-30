@@ -40,7 +40,7 @@ object DRMap {
       /** Read SNPs from DR list */
       val drList = Source.fromFile(config.drList).getLines.filterNot(_.startsWith("#")).filter(_.isSNP).map { line =>
         line match {
-          case DRsnp(d, l, lt, cp, r, gp, a) => new DRsnp(d, l, lt, cp, r, gp, a)
+          case DRsnp(d, l, lt, cp, r, gp, a, cn, aac) => new DRsnp(d, l, lt, cp, r, gp, a, cn, aac)
         }
       }.toList
 

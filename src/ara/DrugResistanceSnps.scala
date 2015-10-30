@@ -18,14 +18,15 @@ object DrugResistanceSnps extends CodonConfig {
       opt[File]("fasta") required () action { (x, c) => c.copy(fasta = x) } text ("Fasta-file")
     }
 
-    val drlist = scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/Coll2015DrugResistances.txt")).getLines().filterNot(_.startsWith("#")).filter(_.isSNP).map { line =>
+    val drList = scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/Coll2015DrugResistances.txt")).getLines().filterNot(_.startsWith("#")).filter(_.isSNP).map { line =>
       line match {
-        case DRsnp(d, l, lt, cp, r, gp, a) => new DRsnp(d, l, lt, cp, r, gp, a)
+        case DRsnp(d, l, lt, cp, r, gp, a, cn, aac) => new DRsnp(d, l, lt, cp, r, gp, a, cn, aac)
       }
     }.toList
-    val locusTag = drlist.map(d => ((if (d.locus.endsWith("-promoter")) d.locus.dropRight(9) else d.locus) -> d.locusTag)).toMap
-    val associatedDrug = drlist.map(d => ((if (d.locus.endsWith("-promoter")) d.locus.dropRight(9) else d.locus) -> d.drug)).toMap
-
+    val locusTag = drList.map(d => ((if (d.locus.endsWith("-promoter")) d.locus.dropRight(9) else d.locus) -> d.locusTag)).toMap
+    val associatedDrug = drList.map(d => ((if (d.locus.endsWith("-promoter")) d.locus.dropRight(9) else d.locus) -> d.drug)).groupBy(_._1).mapValues(_.map(_._2).distinct.mkString(","))
+    //associatedDrug.foreach(println)
+    
     /** Find gene region of SNP position */
     def getLocus(cp: Int, lociList: List[(String, GFFLine)], ref: String, alt: String): List[Map[String, Any]] = {
       val loci = lociList.sortBy(_._2.start)      
@@ -133,35 +134,53 @@ object DrugResistanceSnps extends CodonConfig {
       })
 
       println("#Detected mutations ")
-      println("#Drug\tLocus\tChromosome Coordinate\tGene Coordinate\tNucleotide Change\tCodon Number\tCodon Change\tAmino Acid Change")
+      println("#Drug\tLocus\tChromosome Coordinate\tGene Coordinate\tNucleotide Change\tCodon Number\tCodon Change\tAmino Acid Change\tKnown info")
       snps.foreach { snp =>
         //println(snp)
         val loci = snp.loci.map{ locus => (locus, gffGenes(locusTag(locus))) }.toList
-        //loci.foreach(println)
-        
+        //loci.foreach(println)        
         
         val locus = getLocus(snp.chrPos, loci, snp.ref, snp.alt)
         locus.foreach{l =>
-          val (codonNumber, codonChange, aminoAcidChange) = {//codonChange on forward strand
+          val (codonNumber, codonChange, aminoAcidChange, knownInfo) = {//codonChange on forward strand
             val locusName = l("locus").asInstanceOf[String]
             if (locusName.endsWith("-tail") || locusName.endsWith("-promoter") || locusName.equals("rrl") || locusName.equals("rrs")) {
-              ("-", "-", "-")
+              val knownChrPos = drList.filter(_.cp.equals(snp.chrPos)) 
+              //println(knownChrPos)
+              val knownSnp = if (knownChrPos.isEmpty) "Unknown mutation"
+              else {
+                val knownNchange = knownChrPos.filter(s => s.r.equals(snp.ref) && s.a.equals(snp.alt))
+                if (knownNchange.isEmpty) "Known nucleotide coordinate"
+                else "Known mutation"// + " :" +  knownNchange.mkString
+              }
+              ("-", "-", "-", knownSnp)
             } else {
               val gc = ((l("gene-coordinate")).asInstanceOf[Int])
+              val cn = (gc + 2) / 3
               val codonPosition = (gc + 2) % 3 + 1
-              val cc = {
+              var cc = { // codon change on forward strand
                 if (codonPosition == 1) ref.substring(snp.chrPos - 1, snp.chrPos + 2) + "/" + snp.alt + ref.substring(snp.chrPos, snp.chrPos + 2)
                 else if (codonPosition == 2) ref.substring(snp.chrPos - 2, snp.chrPos + 1) + "/" +  ref.charAt(snp.chrPos - 2) + snp.alt + ref.charAt(snp.chrPos)
                 else ref.substring(snp.chrPos - 3, snp.chrPos) + "/" + ref.substring(snp.chrPos - 3, snp.chrPos - 1) + snp.alt
               }
-              ((gc + 2) / 3, cc, cc.split("/").map(codonMap(_)).mkString("/"))
+              if (gffGenes(locusTag(l("locus").asInstanceOf[String])).line.split("\t")(6).equals("-")) cc = cc.split("/").map(c => complement(c.reverse)).mkString("/")
+              val ac =  cc.split("/").map(codonMap(_)).mkString("/")
+              val knownCodon = {
+                val knownCodonNumber = drList.filter(s => s.locus.equals(l("locus")) && s.gp == gc)
+                //println(knownCodonNumber)
+                if (knownCodonNumber.isEmpty) "Unknown mutation"
+                else {
+                  val knownAac = knownCodonNumber.filter(_.aaChange.equals(ac))
+                  if (knownAac.isEmpty) "Known amino acid coordinate."
+                  else "Known mutation"// + " :" +  knownAac.mkString
+                }
+              }
+              
+              (cn, cc, ac, knownCodon)              
             }}
-          println(l("drug") + "\t" + l("locus") + "\t" + snp.chrPos + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + codonNumber + "\t" + codonChange + "\t" + aminoAcidChange)
-        }
-        
-        //val knownSnp = if (drlist.map(_.cp).contains(snp.chrPos)) drlist.groupBy(_.cp)(snp.chrPos) else "unknown snp"
-        //println(knownSnp)
-        
+          println(l("drug") + "\t" + l("locus") + "\t" + snp.chrPos + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + codonNumber + "\t" + codonChange + "\t" + aminoAcidChange + "\t" + knownInfo)
+          //println
+        }        
 
       }
 
