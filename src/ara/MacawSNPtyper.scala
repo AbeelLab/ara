@@ -46,7 +46,7 @@ object MacawSNPtyper extends Tool {
     }
     out
   }
-  case class Config(val typer: String = null, val detailed: Boolean = false, val markerFile: String = null, val outputFile: String = null, files: List[File] = List(), val threshold: Int = 5)
+  case class Config(val detailed: Boolean = false, val markerFile: String = null, val outputFile: String = null, files: List[File] = List(), val threshold: Int = 5)
   /**
    * args(0) = output file
    *
@@ -55,22 +55,24 @@ object MacawSNPtyper extends Tool {
   def main(args: Array[String]): Unit = {
 
     val parser = new scopt.OptionParser[Config]("java -jar ara.jar SNP-typer") {
-      opt[String]("marker") action { (x, c) => c.copy(markerFile = x) } text ("File containing marker sequences. This file has to be a multi-fasta file with the headers indicating the name of the markers.") //, { v: String => config.spacerFile = v })
+      opt[String]("marker") required() action { (x, c) => c.copy(markerFile = x) } text ("File containing marker sequences. This file has to be a multi-fasta file with the headers indicating the name of the markers.") //, { v: String => config.spacerFile = v })
       opt[String]('o', "output") action { (x, c) => c.copy(outputFile = x) } text ("File where you want the output to be written")
       opt[Int]('t', "threshold") action { (x, c) => c.copy(threshold = x) } text ("Threshold to determine absence or presence of a marker (default=5)")
       opt[Unit]("detailed") action { (_, c) => c.copy(detailed = true) } text ("Output digital marker types per input file. (default=false) ")
-      arg[String]("<mixed-infection | drug-resistance>") required() validate { x => if (x == "mixed-infection" || x == "drug-resistance") success else failure("Required argument <mixed-infection | drug-resistance>")} action { (x, c) => c.copy(typer = x)} text ("Detect mixed infection or drug resistance.")      
+      //arg[String]("<mixed-infection | drug-resistance>") required() validate { x => if (x == "mixed-infection" || x == "drug-resistance") success else failure("Required argument <mixed-infection | drug-resistance>")} action { (x, c) => c.copy(typer = x)} text ("Detect mixed infection or drug resistance.")      
       arg[File]("<file>...") unbounded () required () action { (x, c) => c.copy(files = c.files :+ x) } text ("input files")
 
     }
     parser.parse(args, Config()) map { config =>
       /* Load spacers */
-      val lines = if (config.markerFile != null) tLines(config.markerFile).toList 
-        else if (config.typer == "mixed-infection") scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/RomanosMarkers.txt")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
-        else scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/drMarkers.txt")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
-      val pw = if (config.outputFile != null && config.typer == "mixed-infection") new PrintWriter(config.outputFile + ".MI.ara")
-      else if (config.outputFile != null && config.typer == "drug-resistance") new PrintWriter(config.outputFile + ".DR.ara") 
-      else new PrintWriter(System.out)
+      val lines = tLines(config.markerFile).toList
+        //if (config.markerFile != null) tLines(config.markerFile).toList 
+        //else if (config.typer == "mixed-infection") scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/RomanosMarkers.txt")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
+        //else scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/drMarkers.txt")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
+      val pw = if (config.outputFile != null) new PrintWriter(config.outputFile + ".ara") else new PrintWriter(System.out)
+        //if (config.outputFile != null && config.typer == "mixed-infection") new PrintWriter(config.outputFile + ".MI.ara")
+      //else if (config.outputFile != null && config.typer == "drug-resistance") new PrintWriter(config.outputFile + ".DR.ara") 
+      //else new PrintWriter(System.out)
 
       pw.println(generatorInfo)
 
@@ -174,6 +176,7 @@ object MacawSNPtyper extends Tool {
       val z1 = (gs._2.map(p => cm.get(p._1).toInt)).toList
       val z = z1.sum
 
+      
       pw.println(gs._1 + "\t" + z + "\t" + nf.format(if (z >= config.threshold) 0 else 1) + "\t" + (if (z >= config.threshold) "present" else "absent"))
       buffer.append(if (z >= config.threshold) "1" else "0")
       if (buffer.length() % 11 == 10)
