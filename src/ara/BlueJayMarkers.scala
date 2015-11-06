@@ -28,7 +28,8 @@ object BlueJayMarkers {
       val clusters = config.bjOutput.getName.dropRight(16).split("_").toList
       println("Clusters: " + clusters.mkString(", "))
       
-      println("One of the two clusters contains the reference genome: " + (clusters(0).hasReference || clusters(1).hasReference))      
+      if (clusters(0).hasReference) println(clusters(0) + " includes the reference genome.")
+      if (clusters(1).hasReference) println(clusters(1) + " includes the reference genome.")
       
       /** Reference genome to extend SNPs to 21 bp markers */
       val refGenome = Source.fromFile(config.ref).getLines.filterNot(_.startsWith(">")).mkString
@@ -77,7 +78,7 @@ object BlueJayMarkers {
         }
       }      
       
-      val markers = if (clusters(0).hasReference || clusters(1).hasReference) {
+      val markers = if (associatedSnps2.groupBy(_._3).size == 1) {
         mkMarkers(associatedSnps2.map{snp =>
           val cluster = snp._3
           val refCluster = clusters.filterNot(_.equals(cluster)).mkString
@@ -90,8 +91,10 @@ object BlueJayMarkers {
           (snp) :: complementMarkers
         }.flatten)
       } else mkMarkers(associatedSnps2)
-      println(markers.size + " SNP markers" + (if (clusters(0).hasReference || clusters(1).hasReference) " including complementary markers"))
+      print(markers.size + " SNP markers")
+      if (associatedSnps2.groupBy(_._3).size == 1) print(" including complementary markers")
       //markers.foreach(println)
+      println
       
       /**
        * Remove non-unique markers
@@ -101,7 +104,7 @@ object BlueJayMarkers {
       //mCounts.foreach(println)
       val selection = markers.filter(snp => mCounts(snp._2) == 1)
       print(selection.size + " Unique markers")
-      if (clusters(0).hasReference || clusters(1).hasReference) print(" including complementary markers")
+      if (associatedSnps2.groupBy(_._3).size == 1) print(" including complementary markers")
       
       val pw = new PrintWriter(config.bjOutput.getName.dropRight(15) + "bluejaymarkers")
       pw.println("# BlueJay Lineage specific mutations")
