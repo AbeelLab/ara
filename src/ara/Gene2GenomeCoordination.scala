@@ -3,9 +3,7 @@ package ara
 import scala.io.Source
 import java.io.File
 
-/**
- * @author Arlin
- */
+
 object Gene2GenomeCoordination {
 
   val usage = "scala Gene2GenomeCoordination.scala [list] [gff-file] [fasta-file]"
@@ -58,8 +56,8 @@ object Gene2GenomeCoordination {
               val chrCoor = gC.map{_ match {
                 case c if c < 0 => {
                   if (gene.dir == "+" ) 
-                    if (locus_tag == "RVBD_6018") gene.start + c - 10 
-                    else if (locus_tag == "RVBD_6019") gene.start + c - 2
+                    if (locus_tag == "RVBD_6018") gene.start + c - 10 //rrs gene
+                    else if (locus_tag == "RVBD_6019") gene.start + c - 2 //rrl gene
                     else (gene.start + c)
                   else (gene.end - c)  
                 }
