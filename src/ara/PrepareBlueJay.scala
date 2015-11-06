@@ -62,12 +62,12 @@ object PrepareBlueJay {
             spw.println("#SBATCH --partition=short --qos=short")
           }
 
-          val mem = (samples / 200).toInt + 5
+          val mem = if (samples < 400) 1 else if (samples < 1000) 7 else if (samples < 3000) 15 else 90
           spw.println("#SBATCH --mem=" + mem * 1000)
           spw.println
-          spw.println("java -jar ../../../bluejay-development/bluejay.jar variant-matrix -v vcfpathsfiles/" + cFile.getName.dropRight(8) + "vcfpaths -o variant-matrices/" + cName + " --snps-only")
-          spw.println("wait")
-          spw.println("java -jar -Xmx" + mem + "g ../../../bluejay-development/bluejay.jar associate --lineage lineagematrices/" + cFile.getName.dropRight(8) + "lineagematrix --variant variant-matrices/" + cName + "variantmatrix.txt -o " + cName + "--min-tnr 0.95 --min-tpr 0.95 --min-ppv 0.95 --min-npv 0.95")
+          //spw.println("java -jar ../../../bluejay-development/bluejay.jar variant-matrix -v vcfpathsfiles/" + cFile.getName.dropRight(8) + "vcfpaths -o variant-matrices/" + cName + " --snps-only")
+          //spw.println("wait")
+          spw.println("java -jar -Xmx" + mem + "g ../../../bluejay-development/bluejay.jar associate --lineage lineagematrices/" + cFile.getName.dropRight(8) + "lineagematrix --variant variant-matrices/" + cName + "variantmatrix.txt -o " + cName + " --min-tnr 0.95 --min-tpr 0.95 --min-ppv 0.95 --min-npv 0.95")
           spw.close
 
           bjpw.println("sbatch sbatch-scripts/" + cName + "sbatch")
