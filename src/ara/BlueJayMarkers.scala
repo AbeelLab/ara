@@ -3,6 +3,7 @@ package ara
 import java.io.File
 import scala.io.Source
 import java.io.PrintWriter
+import ara.Cluster._
 
 /**
  * Extract SNPs from BlueJay output and convert them to 21 bp markers, given a reference genome.
@@ -25,16 +26,13 @@ object BlueJayMarkers {
       
       /** Check if one of the two clusters contains the reference genome. */
       val clusters = config.bjOutput.getName.dropRight(16).split("_").toList
-      println("clusters: " + clusters.mkString(", "))
-      def hasReference(clusters: List[String]): Boolean = {
-        val refCluster = "L4.2.2.1.1.2.2.1.1.1.1.1"
-        val res = clusters.map{c =>
-          (c.contains("L4") || c.equals("L4") || c.equals(refCluster.dropRight(10)) || c.equals(refCluster.dropRight(8)) || c.equals(refCluster.dropRight(6)) || 
-              c.equals(refCluster.dropRight(4)) || c.equals(refCluster.dropRight(2)) || c.equals(refCluster))
-        }
-        res.contains(true)
-      }
-      println("One of the two clusters contains the reference genome: " + hasReference(clusters))
+      println("Clusters: " + clusters.mkString(", "))
+      
+      println("One of the two clusters contains the reference genome: " + (clusters(0).hasReference || clusters(1).hasReference))      
+      
+      /** Reference genome to extend SNPs to 21 bp markers */
+      val refGenome = Source.fromFile(config.ref).getLines.filterNot(_.startsWith(">")).mkString
+      println("Reference genome size: " + refGenome.size)
       println
       
       /** Extract lineage associated SNPs from BlueJay output */
@@ -47,7 +45,7 @@ object BlueJayMarkers {
         val alt = arr(2)
         ref.size == 1 && alt.size == 1 // && m._2.equals("presence")
       }.toList.sortBy(_._1.split("_")(0).toInt)
-      println(associatedSnps.size)
+      println(associatedSnps.size + " BlueJay SNPs")
       //associatedSnps.foreach(println)
       //println      
       
@@ -61,14 +59,10 @@ object BlueJayMarkers {
         else if (idx == associatedSnpsPos.size - 1) (associatedSnpsPos(idx) - associatedSnpsPos(idx - 1) < 11)
         else (associatedSnpsPos(idx) - associatedSnpsPos(idx - 1) < 11) || (associatedSnpsPos(idx + 1) - associatedSnpsPos(idx) < 11)
       }
-      println(associatedSnpsPos2.size)
+      println(associatedSnpsPos2.size + " Non-overlapping SNPs")
       //associatedSnpsPos2.foreach(println)
       val associatedSnps2 = associatedSnps.filter(snp => associatedSnpsPos2.contains(snp._1.split("_")(0).toInt))
-      //println(associatedSnps2.size)      
-                  
-      /** Reference genome to extend SNPs to 21 bp markers */
-      val refGenome = Source.fromFile(config.ref).getLines.filterNot(_.startsWith(">")).mkString
-      println("refGenome.size: " + refGenome.size)
+      //println(associatedSnps2.size)
       
       /** Make markers */
       def mkMarkers(snps: List[(String, String, String)]): List[(String, String)] = {
@@ -77,13 +71,13 @@ object BlueJayMarkers {
         val pos = arr(0).toInt
         val ref = arr(1)
         val alt = arr(2)
-        println("Ref. base matches at position " + pos + ": " + (ref == refGenome.substring(pos - 1, pos)))
+        if (ref != refGenome.substring(pos - 1, pos)) println("\tRef. base differs at position " + pos)
         val marker = refGenome.substring(pos - 11, pos - 1) + alt + refGenome.substring(pos, pos + 10)
         (">" + ref + pos + alt + "_" + snp._2 + "_" + snp._3, marker)
         }
       }      
       
-      val markers = if (hasReference(clusters)) {
+      val markers = if (clusters(0).hasReference || clusters(1).hasReference) {
         mkMarkers(associatedSnps2.map{snp =>
           val cluster = snp._3
           val refCluster = clusters.filterNot(_.equals(cluster)).mkString
@@ -96,6 +90,7 @@ object BlueJayMarkers {
           (snp) :: complementMarkers
         }.flatten)
       } else mkMarkers(associatedSnps2)
+      println(markers.size + " SNP markers" + (if (clusters(0).hasReference || clusters(1).hasReference) " including complementary markers"))
       //markers.foreach(println)
       
       /**
@@ -103,9 +98,10 @@ object BlueJayMarkers {
        */
       val allMarkers = markers.map(_._2).toList      
       val mCounts = allMarkers.map(m1 => (m1, allMarkers.count(m2 => m2 == m1))).toMap
-      mCounts.foreach(println)
+      //mCounts.foreach(println)
       val selection = markers.filter(snp => mCounts(snp._2) == 1)
-      println(selection.size)
+      print(selection.size + " Unique markers")
+      if (clusters(0).hasReference || clusters(1).hasReference) print(" including complementary markers")
       
       val pw = new PrintWriter(config.bjOutput.getName.dropRight(15) + "bluejaymarkers")
       pw.println("# BlueJay Lineage specific mutations")
