@@ -54,7 +54,7 @@ object BlueJayMarkers {
        * Remove SNP positions within 10 bp
        */
       val associatedSnpsPos = associatedSnps.map(_._1.split("_")(0).toInt).sorted //All SNP positions
-      val associatedSnpsPos2 = associatedSnpsPos.filterNot { x =>
+      val associatedSnpsPos2 = if (associatedSnpsPos.size == 1) associatedSnpsPos else associatedSnpsPos.filterNot { x =>
         val idx = associatedSnpsPos.indexOf(x)
         if (idx == 0) (associatedSnpsPos(idx + 1) - associatedSnpsPos(idx) < 11)
         else if (idx == associatedSnpsPos.size - 1) (associatedSnpsPos(idx) - associatedSnpsPos(idx - 1) < 11)
