@@ -1,15 +1,27 @@
 package ara
 
-
 object Cluster {
-  class Cluster(s: String){
+  class Cluster(s: String) {
+
+    def hasReference: Boolean = s match {
+      case "L1-L2-L3-L4" => true
+      case "L2-L3-L4" => true
+      case "L4" => true
+      case "L4.2" => true
+      case "L4.2.2" => true
+      case "L4.2.2.1" => true
+      case "L4.2.2.1.1" => true
+      case "L4.2.2.1.1.2" => true
+      case "L4.2.2.1.1.2.2" => true
+      case "L4.2.2.1.1.2.2.1" => true
+      case "L4.2.2.1.1.2.2.1.1" => true
+      case "L4.2.2.1.1.2.2.1.1.1" => true
+      case "L4.2.2.1.1.2.2.1.1.1.1" => true
+      case "L4.2.2.1.1.2.2.1.1.1.1.1" => true
+      case _ => false
+    }
     
-    val refCluster = "L4.2.2.1.1.2.2.1.1.1.1.1"
-    
-    def hasReference: Boolean = {        
-       (s.contains("L4") || s.equals("L4") || s.equals(refCluster.dropRight(10)) || s.equals(refCluster.dropRight(8)) || s.equals(refCluster.dropRight(6)) || 
-              s.equals(refCluster.dropRight(4)) || s.equals(refCluster.dropRight(2)) || s.equals(refCluster))
-      }
   }
+  
   implicit def seqtoBool(s: String) = new Cluster(s)
 }
