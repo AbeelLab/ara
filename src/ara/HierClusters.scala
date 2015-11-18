@@ -55,20 +55,46 @@ object HierClusters {
         val child2 = node.getChild(1)
         println("Parent node at level " + lvl + ": " + children + " samples")
 
+        def getCluster(samples: List[String]): String = {
+          samples.map{s => 
+            val c = hc(s)
+            val cName = if (c.last.contains("-")) c.last else c.filterNot(_.contains("-")).mkString(".")
+            (s, cName)
+          }.groupBy(_._2).keys.mkString
+        }
+        
+        def printCluster(cluster: String, samples: List[String]): Unit = {
+          val cpw = new PrintWriter(new File(config.out + "/" + cluster + "_cluster"))
+          cpw.println("# Hierarchical clusters ")
+          cpw.println("# " + cluster + "(N=" + samples.size + ")")
+          cpw.println("# Command: java -jar ara.jar hier-clusters " + args.mkString(" "))
+          cpw.println("# Compiled: " + Calendar.getInstance.getTime)
+          samples.foreach(s => cpw.println(s + "\t" + cluster))
+          hierClusters.diff(samples).foreach(s => cpw.println(s + "\tnot" + cluster))          
+          cpw.close
+        }
+        
         /** Child 1 */
         if (child1.numberLeaves >= 10) {
-          val c1 = t.getLeaves(child1).map(_.getName)
+          val c1 = t.getLeaves(child1).map(_.getName).toList
           val lineage = c1.map(lin(_)).distinct.toList
           if (child2.numberLeaves >= 10) {
             println("\tc1: " + lineage.mkString(", ") + ",  at level " + (lvl + 1) + ": " + child1.numberLeaves + " samples")
-            if (lineage.size > 1) {
+            
+            val cName = if (lineage.size > 1) {
               val l = lineage.map(l => "L" + l.last).sorted.mkString("-")
-              c1.foreach(s => hc = updateHC(hc, s, l))
+              l
             } else if (linNumbers(lineage.mkString) == c1.size) {
-              c1.foreach(s => hc = updateHC(hc, s, "L" + lineage.mkString.last))
+              "L" + lineage.mkString.last
             } else {
-              c1.foreach(s => hc = updateHC(hc, s, "1"))
-            }
+              "1"
+            }            
+            c1.foreach(s => hc = updateHC(hc, s, cName))            
+            
+            val cluster = getCluster(c1)            
+            println("\t" + cluster)
+            printCluster(cluster, c1)
+            
           }
           else {
             println("\tc: " + lineage.mkString(", ") + ",  at level " + (lvl + 1) + ": " + child1.numberLeaves + " samples")
@@ -80,18 +106,25 @@ object HierClusters {
 
         /** Child 2 */
         if (child2.numberLeaves >= 10) {
-          val c2 = t.getLeaves(child2).map(_.getName)
+          val c2 = t.getLeaves(child2).map(_.getName).toList
           val lineage = c2.map(lin(_)).distinct.toList
           if (child1.numberLeaves >= 10) {
             println("\tc2: " + lineage.mkString(", ") + ",  at level " + (lvl + 1) + ": " + child2.numberLeaves + " samples")
-            if (lineage.size > 1) {
+            
+            val cName = if (lineage.size > 1) {
               val l = lineage.map(l => "L" + l.last).sorted.mkString("-")
-              c2.foreach(s => hc = updateHC(hc, s, l))
+              l
             } else if (linNumbers(lineage.mkString) == c2.size) {
-              c2.foreach(s => hc = updateHC(hc, s, "L" + lineage.mkString.last))
+              "L" + lineage.mkString.last
             } else {
-              c2.foreach(s => hc = updateHC(hc, s, "2"))
-            }
+              "2"
+            }            
+            c2.foreach(s => hc = updateHC(hc, s, cName))
+            
+            val cluster = getCluster(c2)            
+            println("\t" + cluster)
+            printCluster(cluster, c2)
+            
           } else {
             println("\tc: " + lineage.mkString(", ") + ",  at level " + (lvl + 1) + ": " + child2.numberLeaves + " samples")
           }
@@ -101,7 +134,7 @@ object HierClusters {
         }
         
         /** Print hierarchical clusters to file if both groups are defined as hierarchical clusters (size > 10).*/        
-        if (child1.numberLeaves >= 10 && child2.numberLeaves >= 10) {
+        /**if (child1.numberLeaves >= 10 && child2.numberLeaves >= 10) {
           val samples = t.getLeaves(child1).map(_.getName) ++ t.getLeaves(child2).map(_.getName).toList
           val clusters = samples.map{s => 
             val c = hc(s)
@@ -119,7 +152,7 @@ object HierClusters {
             }            
           }
           cpw.close
-        }
+        }*/
 
         /** Recursive call */
         if (child1.numberLeaves > 19) { readRecursive(child1, lvl + 1) }
@@ -130,7 +163,7 @@ object HierClusters {
       readRecursive(t.root, 0)
 
       /** Print all samples and all clusters to a file with user-defined output file name. */
-      val pw = new PrintWriter(new File(config.out + "/" + config.out + "_clusters"))
+      val pw = new PrintWriter(new File(config.out + "_clusters"))
       pw.println("# Hierarchical clusters")
       pw.println("# Total samples: " + totalTaxa)
       pw.println("# Command: java -jar ara.jar hier-clusters " + args.mkString(" "))
@@ -144,7 +177,8 @@ object HierClusters {
       println
       println("Number of samples per lineage: ")
       linNumbers.foreach(_ match {case (l, n) => println("\t" + l + " (" + n + ")")})
-
+      
+      
     }
 
   }
