@@ -3,6 +3,7 @@ package ara
 import java.io.File
 import java.io.PrintWriter
 import scala.io.Source
+import ara.Cluster._
 
 object PrepareBlueJay {
 
@@ -15,68 +16,67 @@ object PrepareBlueJay {
 
     val parser = new scopt.OptionParser[Config]("java -jar ara.jar prepare-bluejay") {
       opt[File]('i', "input") required () action { (x, c) => c.copy(input = x) } text ("Input directory with hierarchical cluster files.")
-      //opt[File]("vcf-paths") required () action { (x, c) => c.copy(vcfpaths = x) } text ("File with all VCF-paths")
-      opt[File]("exclude") action { (x, c) => c.copy(exclude = x) } text ("File with clusters to exclude.")
+      opt[File]("exclude") action { (x, c) => c.copy(exclude = x) } text ("File with cluster to exclude.")
     }
 
     def listFiles(f: Any): List[File] = f match {
       case f: File if (f.isDirectory()) => f.listFiles().toList.flatMap(listFiles(_))
-      case f: File if (f.isFile() && f.getName.endsWith("_clusters")) => List(f)
+      case f: File if (f.isFile() && f.getName.endsWith("_cluster")) => List(f)
       case _ => Nil
     }
 
     parser.parse(args, Config()) map { config =>
 
       val clusterFiles = listFiles(config.input)
-      //val vcfpaths = Source.fromFile(config.vcfpaths).getLines.map(line => (line.split("/")(8) -> line)).toMap
+      if (clusterFiles.isEmpty) {println("Directory does not contain cluster files. Exiting..."); System.exit(-1)} else {println(clusterFiles.size + " cluster files")}
+      
       val exclude = if (config.exclude != null) Source.fromFile(config.exclude).getLines.toList else List.empty[String]
 
-      //new File("vcfpathsfiles").mkdir()
-      //new File("sbatch-scripts").mkdir()
-      //new File("variant-matrices").mkdir()
+      new File("sbatch-scripts").mkdir()
+      new File("lineage-matrices").mkdir()
+      new File("associated-snps").mkdir()
 
       val bjpw = new PrintWriter("bluejay.sh")
-
+      val lpw = new PrintWriter("lineage-matrices.sh")
+      
+      lpw.println("#!/bin/bash")
+      lpw.println("#SBATCH --job-name=lineagematrices")
+      lpw.println("#SBATCH --output=slurm-lineagematrices")
+      lpw.println("#SBATCH --workdir=/tudelft.net/staff-bulk/ewi/insy/DBL/Arlin/Results/5992taxa/BlueJay/lineage-matrices")
+      lpw.println("#SBATCH --partition=short --qos=short")
+      lpw.println
+      
       clusterFiles.foreach { cFile =>
 
         val cName = cFile.getName.dropRight(8)
 
         if (!exclude.contains(cName)) {
+          
           val samples = Source.fromFile(cFile).getLines.filterNot(_.startsWith("#")).size
           
-          /**
-           * val vcfs = Source.fromFile(cFile).getLines.filterNot(_.startsWith("#")).filterNot(_.startsWith("reference")).map(line => vcfpaths(line.split("\t")(0))).toList
-           * val vcfpw = new PrintWriter("vcfpathsfiles/" + cName + "vcfpaths")
-           * vcfs.foreach(vcfpw.println)
-           * vcfpw.close
-           */
-
-          val spw = new PrintWriter("sbatch-scripts/" + cName + "sbatch")
+          lpw.println("java -jar ../../../../bluejay-development/bluejay.jar lineage-matrix -i ../" + cFile + " -o " + cName + "_lineagematrix -c 1")          
+          
+          val spw = new PrintWriter("sbatch-scripts/" + cName + "_sbatch")
           spw.println("#!/bin/bash")
           spw.println("#SBATCH --job-name=" + cName)
-          spw.println("#SBATCH --workdir=/tudelft.net/staff-bulk/ewi/insy/DBL/Arlin/Results/6100taxa/BlueJay_5992taxa")
+          spw.println("#SBATCH --workdir=/tudelft.net/staff-bulk/ewi/insy/DBL/Arlin/Results/5992taxa/BlueJay/associated-snps")
           spw.println("#SBATCH --output=slurm_" + cName + ".out")
-          if (samples > 1500) {
-            spw.println("#SBATCH --partition=long --qos=long")
-          } else {
-            spw.println("#SBATCH --partition=short --qos=short")
-          }
-
-          val mem = if (samples < 400) 1 else if (samples < 1000) 7 else if (samples < 3000) 15 else 90
-          spw.println("#SBATCH --mem=" + mem * 1000)
+          spw.println("#SBATCH --partition=short --qos=short")
+          spw.println("#SBATCH --mem=11000")
           spw.println
-          //spw.println("java -jar ../../../bluejay-development/bluejay.jar variant-matrix -v vcfpathsfiles/" + cFile.getName.dropRight(8) + "vcfpaths -o variant-matrices/" + cName + " --snps-only")
-          //spw.println("wait")
-          spw.println("java -jar -Xmx" + mem + "g ../../../bluejay-development/bluejay.jar associate --lineage lineagematrices/" + cFile.getName.dropRight(8) + "lineagematrix --variant variant-matrices/" + cName + "variantmatrix.txt -o " + cName + " --min-tnr 0.95 --min-tpr 0.95 --min-ppv 0.95 --min-npv 0.95")
+          spw.println
+          spw.print("java -jar -Xmx11g ../../../../bluejay-development/bluejay.jar associate --lineage ../lineage-matrices/" + cName + "_lineagematrix --variant ../5992taxa_variantmatrix_transposed.txt -o " + cName + "_ --min-tnr 0.95 --min-tpr 0.95 --min-ppv 0.95 --min-npv 0.95")
+          if (cName.hasReference) spw.print(" --absence")
           spw.close
 
-          bjpw.println("sbatch sbatch-scripts/" + cName + "sbatch")
+          bjpw.println("sbatch sbatch-scripts/" + cName + "_sbatch")
 
         }
 
       }
 
       bjpw.close
+      lpw.close
 
     }
 
