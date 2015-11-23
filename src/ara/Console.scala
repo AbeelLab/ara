@@ -20,11 +20,9 @@ object Console {
         //case "dr-markers" => DrugResistanceMarkers.main(args.drop(1))
         case "hier-clusters" => HierClusters.main(args.drop(1))
         case "bj-markers" => BlueJayMarkers.main(args.drop(1))
-        case "all-bj-markers" => AllBlueJayMarkers.main(args.drop(1))
         case "ref-DR-region" => DRMap.main(args.drop(1))
         case "prepare-drmapping" => PrepareDRMapping.main(args.drop(1))
         case "prepare-bluejay" => PrepareBlueJay.main(args.drop(1))
-        case "count-bj-snps" => CountBJsnps.main(args.drop(1))
         case _ => listInstructions 
       }
     }
