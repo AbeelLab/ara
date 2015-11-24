@@ -148,7 +148,16 @@
             </classpath>
         </javac>
 
-    	
+    	<copy todir="${build}/">
+
+    		<fileset dir="resources">
+
+    	  		<include name="hierclusters_global_bluejaymarkers" />
+    	   		<include name="Coll2015DrugResistances.txt" />
+    		    						
+    	  	</fileset>
+    				
+    	</copy>
     	
         <jar
             basedir="${build}"
