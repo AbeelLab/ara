@@ -4,6 +4,7 @@ import java.io.File
 import java.io.PrintWriter
 import scala.io.Source
 import ara.Cluster._
+import edu.northwestern.at.utils.math.statistics.Descriptive
 
 object AraUtilities {
 
@@ -19,8 +20,6 @@ object AraUtilities {
     }
 
     parser.parse(args, Config()) map { config =>
-
-      val pw = new PrintWriter(config.output)
 
       val markers = Source.fromFile(config.markers).getLines.filterNot(_.startsWith("#")).toList.dropRight(2).map {
         _ match {
@@ -60,47 +59,82 @@ object AraUtilities {
       })
       //averageCov.foreach(println)
 
-      pw.println("$$\tTotal mapped reads\tTotal markers\tPresent markers\tMean read-depth/present marker")
+      /** Median read depth of present markers per cluster */
+      val medianCov = markers.map(_ match {
+        case (lineage, linMarkers) => {
+          val arr = linMarkers.filter(_.isPresent).map(_.count.toDouble).sorted.toArray
+          (lineage, Descriptive.median(arr))
+        }
+      })
+      
+      /** Total median coverage at MTBC root */
+      val totalMedianCov = medianCov("L1-L2-L3-L4") + medianCov("L5-L6-LB")
 
+      
+      val presentClusters = clusters.filter { c =>
+        val totalMarkers = totalMarkersPerLineage(c)
+        val presentMarkers = linCountsPresent(c)
+        if (c.hasReference) {
+          presentMarkers > (totalMarkers / 6)
+        } else {
+          presentMarkers > (totalMarkers / 2)
+        }
+      }
+      //val filtered = presentClusters.filter(c => presentClusters.contains(c.getAncestor) || c.getAncestor == "MTBC")
+      //
+      presentClusters.sorted.foreach(c => println(c + "\t" + averageCov(c) + "\t" + medianCov(c)))
+      println
+    
+
+      /** Recursive call to get tree path from leaf to root */
+      def getPath(str: String): List[String] = {
+        def recursive(ls: List[String]): List[String] = ls.head match {
+          case c if (c.hasAncestor) => recursive(c.getAncestor :: ls)
+          case _ => ls
+        }
+        recursive(List(str))
+      }
+      
+      val leaves = presentClusters.filter(_.isLeafCluster).map(getPath(_)).map{path =>
+          val cov = path.filterNot(_.hasZeroMarkers).map(medianCov(_))
+          (path zip cov)
+      }
+      println("Leaves")
+      leaves.foreach(l => println(l))
+      println
+      println("paths")
+      val paths = leaves.filterNot(c => c.map(_._2).contains(0))//Filter out leaf cluster if it has an ancestor with 0 read depth
+      paths.foreach(println)
+      println
+      val intersect = paths.flatten.distinct
+      //intersect.foreach(println)
+      val overlappingPath = paths.flatten.groupBy(identity).mapValues(_.size).filter(c => c._2 > 1).keysIterator.toList.sorted
+      println("Overlapping path")
+      println(overlappingPath)
+      val splitPaths = paths.map(_.filterNot(c => overlappingPath.map(_._1).contains(c._1)))
+      println("Split paths")
+      splitPaths.foreach(println)
+      
+      
+      /** Print output*/
+      val pw = new PrintWriter(config.output)      
+      /**pw.println("$$\tTotal mapped reads\tTotal markers\tPresent markers\tMean read-depth/present marker")
       clusters.sorted.foreach { c =>
         val avgCov = if (averageCov.contains(c)) averageCov(c) else 0
         pw.println(c + "\t" + markerCounts(c) + "\t" + totalMarkersPerLineage(c) + "\t" + linCountsPresent(c) + "\t" + avgCov)
-      }
-
+      }**/
+      pw.println("# Ara Results")
+      pw.println("# Command: " + args.mkString(" "))
+      pw.println("# ")
+      pw.println("Predicted groups: " + paths.map(_.last).mkString(", "))
+      pw.println("Mixed infection: " + (paths.size > 1))
+      pw.println
+      intersect.foreach(pw.println)
+      
       pw.close
 
-      def getPresentClusters(): Unit = {
-        /**val rootClusters = List("L1-L2-L3-L4", "L5-L6-LB").map { c =>
-          val snpPositions = if (c.hasReference) totalMarkersPerLineage(c) / 3 else totalMarkersPerLineage(c)
-          val present = linCountsPresent(c)
-          if (present > (snpPositions / 2)) (c, true) else (c, false)
-        }*/
-        
-        /** Return presence is true if more than 50% of SNP positions has been detected. */
-        def getPresence(c: String): Boolean = {
-          val snpPositions = if (c.hasReference) totalMarkersPerLineage(c) / 3 else totalMarkersPerLineage(c)
-          val present = linCountsPresent(c)
-          if (present > (snpPositions / 2)) true else false
-        }
-        
-        val path1 = List("L1-L2-L3-L4", "L1")
-        val path2 = List("L1-L2-L3-L4", "L2-L3-L4", "L2-L3", "L2")
-        val path3 = List("L1-L2-L3-L4", "L2-L3-L4", "L2-L3", "L3")
-        val path4 = List("L1-L2-L3-L4", "L2-L3-L4", "L4")
-        val path5 = List("L5-L6-LB", "L5")
-        val path6 = List("L5-L6-LB", "L6-LB", "L6")
-        val pathB = List("L5-L6-LB", "L6-LB", "LB")
-        
-        
-        
-        /**rootClusters.foreach(_._2 match {
-          case true => 
-          case false =>
-        })
-        rootClusters.foreach(println) */
-      }
-
-      getPresentClusters()
+      
+      
 
     }
 
