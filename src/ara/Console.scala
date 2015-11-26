@@ -9,7 +9,7 @@ object Console {
       args(0) match {
         
         case "help" => listInstructions
-        case "SNP-typer" => MacawSNPtyper.main(args.drop(1))
+        case "snp-typer" => MacawSNPtyper.main(args.drop(1))
         case "interpret" => AraUtilities.main(args.drop(1))
         //case "interpret-macaw" => MacawUtilities.main(args.drop(1))
         //case "interpret-DR" => DrugResistances.main(args.drop(1))
@@ -21,6 +21,7 @@ object Console {
         case "hier-clusters" => HierClusters.main(args.drop(1))
         case "bj-markers" => BlueJayMarkers.main(args.drop(1))
         case "ref-DR-region" => DRMap.main(args.drop(1))
+        case "prepare-ara" => PrepareAra.main(args.drop(1))
         case "prepare-drmapping" => PrepareDRMapping.main(args.drop(1))
         case "prepare-bluejay" => PrepareBlueJay.main(args.drop(1))
         case _ => listInstructions 
@@ -46,6 +47,7 @@ object Console {
       println("\tall-bj-markers\t\tCombine multiple marker files into one.")
       println("\tref-DR-region\t\tCreate minimized version of reference genome containing known DR-regions.")
       println
+      println("\tprepare-ara\tPrepare sbatch scripts to run Ara.")
       println("\tprepare-drmapping\tPrepare slurm script for each sample to detect drug resistance.")
       println("\tprepare-bluejay\t\tPrepare slurm script for hierarchical clusters for SNP-association.")
     }    
