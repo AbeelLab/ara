@@ -18,7 +18,7 @@ object MacawUtilities {
     
     val parser = new scopt.OptionParser[Config]("java -jar ara.jar interpret-GT") {
       opt[String]('m', "markers") required() action { (x, c) => c.copy(snpTyperOutput = x) } text ("Output file of MacawSNPTyper.")
-      opt[String]('o', "output") required() action { (x, c) => c.copy(result = x + ".interpret-MI.ara") } text ("Output name for the file with results.")
+      opt[String]('o', "output") required() action { (x, c) => c.copy(result = x + ".interpret.macaw") } text ("Output name for the file with results.")
     }
     
     parser.parse(args, Config()) map { config =>
@@ -27,10 +27,11 @@ object MacawUtilities {
       val markers = Source.fromFile(new File(config.snpTyperOutput)).getLines.filterNot(_.startsWith("#")).toList.dropRight(2).map { _ match {
         case Marker(m, c, p) => new ClusterMarker(m, c, p)
       }}.groupBy(_.lineage)
-      
+            
       /** Count total number of markers per cluster. */
       val totalMarkersPerLineage = markers.mapValues(_.size)
       totalMarkersPerLineage.foreach(println)
+      println("Total markers per lineage")
       println(totalMarkersPerLineage.foldLeft(0)(_ + _._2))
       
       /** Total number of mapped reads per cluster. */
@@ -70,12 +71,12 @@ object MacawUtilities {
           if (pValue > 1) (lin, 1.toFloat)
           else (lin, pValue.toFloat)        
       }.toMap
-      println("fisherPValues: ")
+      println("fisherPValues")
       fisherPValues.foreach(println)
       
       /** Average read depth per cluster: # of mapped reads per clusters / # of markers per cluster. */
       val avgMarkerPerLin = lineages.map(lin => (lin, markerCounts(lin).toFloat / totalMarkersPerLineage(lin))).toMap
-      println("avgMarkerPerLin: ")
+      println("avgMarkerPerLin")
       avgMarkerPerLin.foreach(println)
       
       /** Percentage of present clusters. */
