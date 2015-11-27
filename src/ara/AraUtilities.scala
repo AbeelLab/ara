@@ -128,12 +128,7 @@ object AraUtilities extends MTBCclusters {
       val paths = presentLeaves.map(getPath(_)).filterNot { p =>
         val presencePath = p.map(c => presence(c))
         presencePath.contains(false)
-      } // Filter out paths that have gaps, clusters in path for which half of the markers is not detected.
-
-      /*.map{path =>
-          val cov = path.filterNot(_.hasZeroMarkers).map(medianCov(_))
-          (path zip cov)
-      }*/
+      } 
       println("Present leave(s)")
       presentLeaves.foreach(println)
       println
@@ -149,14 +144,12 @@ object AraUtilities extends MTBCclusters {
       pw.println("# Ara Results")
       pw.println("# Command: " + args.mkString(" "))
       pw.println("# ")
-      pw.println("Predicted groups: " + paths.map(_.last).mkString(", "))
-      pw.println("Mixed infection: " + (paths.size > 1))
+      
 
       
       val strainCountPerCluster = paths.flatten.groupBy(identity).mapValues(_.size)
       val presentStrains = strainCountPerCluster.map(_._2).max
-
-      pw.println(presentStrains + " present strains/paths")
+      pw.println("# " + presentStrains + " present strains/paths\n")
 
       val separatedPaths = (1 to presentStrains).toList.map { number =>
         val path = paths.map(_.filter(strainCountPerCluster(_) == number)).distinct.filterNot(_.isEmpty)
@@ -167,32 +160,62 @@ object AraUtilities extends MTBCclusters {
 
       val meanCovPerPath = separatedPaths.map {
         _ match {
-          case (number, pathList) => (number, pathList.map(path => (meanCovPath(path), medianCovPath(path), path)))
+          case (number, pathList) => (number, pathList.map(path => (meanCovPath(path), path)))
         }
       }
       meanCovPerPath.foreach(println)
       println
 
-      val rootNodes = meanCovPerPath.flatMap(_._2).filter(p => p._3.head == "L1-L2-L3-L4" || p._3.head == "L5-L6-LB" || p._3.head == "MTBC")
+      val rootNodes = meanCovPerPath.flatMap(_._2).filter(p => p._2.head == "L1-L2-L3-L4" || p._2.head == "L5-L6-LB" || p._2.head == "MTBC")
       val rootMeanCov = rootNodes.map(_._1).foldLeft(0.toDouble)(_ + _)
-      val rootMedianCov = rootNodes.map(_._2).foldLeft(0.toDouble)(_ + _)
+      //val rootMedianCov = rootNodes.map(_._2).foldLeft(0.toDouble)(_ + _)
       rootNodes.foreach(println)
       println("Mean coverage root node: " + rootMeanCov + " (1)")
-      println("Median coverage root node: " + rootMedianCov + " (1)")
+      //println("Median coverage root node: " + rootMedianCov + " (1)")
 
-      if (meanCovPerPath.size > 1) { // Mixed infection, estimate frequencies
+      
+      if (presentStrains > 1) { // Mixed infection, estimate frequencies
+        
+        val freqs = meanCovPerPath(1).map(p => ((p._1 / rootMeanCov), p._1, p._2.last))
+        pw.println("Predicted groups: " + freqs.map(p => p._3 + "(" + p._1 +")").mkString(", "))
+        pw.println("Mixed infection: TRUE\n")
+        
+        val rootPath = meanCovPerPath(presentStrains).head // Path with all strains
+        pw.println("Root path: " + rootPath._2.mkString(" -> "))
+        pw.println("Mean read coverage: " + rootMeanCov)
+        pw.println("Frequency estimate: " + 1.0)
+        pw.println
+        
 
-        val covL1toL4 = meanCovPerPath.flatMap(_._2).filter(p => p._3.head == "L1-L2-L3-L4")
-        println("Path coverage L1-L2-L3-L4: " + covL1toL4)
-        val covL5toLB = meanCovPerPath.flatMap(_._2).filter(p => p._3.head == "L5-L6-LB")
-        println("Path coverage LL5-L6-LB: " + covL5toLB)
-        println
+        for (number <- (1 to presentStrains - 1).reverse){
+          println(number)
+          val path = meanCovPerPath(number).map{p => 
+            val ancestor = p._2.head.getAncestor
+            println(ancestor)
+            val ancestorPath = meanCovPerPath.flatMap(_._2).filter(_._2.contains(ancestor)).head
+            
+            val space = "\t" * (presentStrains - number)
+            pw.println(space + p._2.mkString(" -> "))
+            pw.println(space + "Mean read coverage: " + p._1)
+            if (ancestor == "MTBC") pw.println(space + "Frequency estimate: " + (p._1 / rootMeanCov))
+            else pw.println(space + "Frequency estimate: " + (p._1 / ancestorPath._1))
+            pw.println
+          }
+          
+        }
+                
+      } else if (meanCovPerPath.size == 1){ // Not a mixed infection
         
+        pw.println("Predicted groups: " + paths.map(_.last).mkString(", "))
+        pw.println("Mixed infection: FALSE")
         
-        
-      } else { // Not a mixed infection
         println("One present strain/path")
         println(paths.flatten.map(c => (c, medianCov(c))))
+        
+        
+      } else { // No path detected
+        pw.println("Predicted groups: NONE")
+        pw.println("Mixed infection: FALSE")
       }
 
       pw.close
