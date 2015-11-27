@@ -197,8 +197,8 @@ object AraUtilities extends MTBCclusters {
             val space = "\t" * (presentStrains - number)
             pw.println(space + p._2.mkString(" -> "))
             pw.println(space + "Mean read coverage: " + p._1)
-            if (ancestor == "MTBC") pw.println(space + "Frequency estimate: " + (p._1 / rootMeanCov))
-            else pw.println(space + "Frequency estimate: " + (p._1 / ancestorPath._1))
+            if (ancestor == "MTBC") pw.println(space + "Frequency estimate: " + (p._1 / rootMeanCov) + " (" + p._1 + "/" + rootMeanCov + ")")
+            else pw.println(space + "Frequency estimate: " + (p._1 / ancestorPath._1) + " (" + p._1 + "/" + ancestorPath._1 + ")")
             pw.println
           }
           

@@ -39,9 +39,24 @@ object Cluster {
 
     def hasAncestor: Boolean = s match {
       case "MTBC" => false
-      //case "L1-L2-L3-L4" => false
-      //case "L5-L6-LB" => false
       case _ => true
+    }
+    
+    def getSibling: String = s match {
+      case x if (x.contains(".")) => if (x.last == 1) x.dropRight(1) + "2" else x.dropRight(1) + "1"
+      case "L1-L2-L3-L4" => "L5-L6-LB"
+      case "L5-L6-LB" => "L1-L2-L3-L4"
+      case "L1" => "L2-L3-L4"
+      case "L2-L3-L4" => "L1"
+      case "L2-L3" => "L4"
+      case "L4" => "L2-L3"
+      case "L2" => "L3"
+      case "L3" => "L2"
+      case "L5" => "L6-LB"
+      case "L6-LB" => "L5"
+      case "L6" => "LB"
+      case "LB" => "L6"
+      case _ => null
     }
     
     def hasZeroMarkers: Boolean = s match {
