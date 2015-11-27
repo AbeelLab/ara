@@ -6,7 +6,7 @@ import scala.io.Source
 import ara.Cluster._
 import edu.northwestern.at.utils.math.statistics.Descriptive
 
-object AraUtilities {
+object AraUtilities extends MTBCclusters {
 
   case class Config(
     val markers: File = null,
@@ -60,31 +60,33 @@ object AraUtilities {
       //averageCov.foreach(println)
 
       /** Median read depth of present markers per cluster */
-      val medianCov = markers.map(_ match {
-        case (lineage, linMarkers) => {
-          val arr = linMarkers.filter(_.isPresent).map(_.count.toDouble).sorted.toArray
-          (lineage, Descriptive.median(arr))
-        }
-      })
-      
+      def medianCov(c: String): Double = {
+        val medianCovMap = markers.map(_ match {
+          case (lineage, linMarkers) => {
+            val arr = linMarkers.filter(_.isPresent).map(_.count.toDouble).sorted.toArray
+            (lineage, Descriptive.median(arr))
+          }
+        })
+        if (c.hasZeroMarkers) 0 else medianCovMap(c)
+      }
+
       /** Total median coverage at MTBC root */
       val totalMedianCov = medianCov("L1-L2-L3-L4") + medianCov("L5-L6-LB")
 
-      
-      val presentClusters = clusters.filter { c =>
+      /**
+       * Presence of cluster based on number detected markers
+       *  Clusters with 0 markers could be present, so function return true for these clusters.
+       */
+      def presence(c: String): Boolean = {
+        if (c.hasZeroMarkers) return true
         val totalMarkers = totalMarkersPerLineage(c)
         val presentMarkers = linCountsPresent(c)
         if (c.hasReference) {
-          presentMarkers > (totalMarkers / 6)
+          presentMarkers > (totalMarkers / 30)
         } else {
-          presentMarkers > (totalMarkers / 2)
+          presentMarkers > (totalMarkers / 10)
         }
       }
-      //val filtered = presentClusters.filter(c => presentClusters.contains(c.getAncestor) || c.getAncestor == "MTBC")
-      //
-      presentClusters.sorted.foreach(c => println(c + "\t" + averageCov(c) + "\t" + medianCov(c)))
-      println
-    
 
       /** Recursive call to get tree path from leaf to root */
       def getPath(str: String): List[String] = {
@@ -94,47 +96,87 @@ object AraUtilities {
         }
         recursive(List(str))
       }
-      
-      val leaves = presentClusters.filter(_.isLeafCluster).map(getPath(_)).map{path =>
+
+      val presentLeaves = clusters.filter(_.isLeafCluster).filter { c => presence(c) }
+      presentLeaves.sorted.foreach(c => if (c.hasZeroMarkers) println(c + "\t" + 0 + "\t" + 0) else println(c + "\t" + averageCov(c) + "\t" + medianCov(c)))
+      println
+
+      val paths = presentLeaves.map(getPath(_)).filterNot { p =>
+        val presencePath = p.map(c => presence(c))
+        presencePath.contains(false)
+      } // Filter out paths that have gaps, clusters in path for which half of the markers is not detected.
+
+      /*.map{path =>
           val cov = path.filterNot(_.hasZeroMarkers).map(medianCov(_))
           (path zip cov)
-      }
-      println("Leaves")
-      leaves.foreach(l => println(l))
+      }*/
+      println("Present leave(s)")
+      presentLeaves.foreach(println)
       println
-      println("paths")
-      val paths = leaves.filterNot(c => c.map(_._2).contains(0))//Filter out leaf cluster if it has an ancestor with 0 read depth
+      println("Present path(s)")
       paths.foreach(println)
       println
-      val intersect = paths.flatten.distinct
-      //intersect.foreach(println)
-      val overlappingPath = paths.flatten.groupBy(identity).mapValues(_.size).filter(c => c._2 > 1).keysIterator.toList.sorted
-      println("Overlapping path")
-      println(overlappingPath)
-      val splitPaths = paths.map(_.filterNot(c => overlappingPath.map(_._1).contains(c._1)))
-      println("Split paths")
-      splitPaths.foreach(println)
-      
-      
+
+      /*def intersectAll(ls: List[List[String]]): List[String] = {
+        if (ls.isEmpty) return List.empty[String]
+        def recursiveIntersect(ls1: List[String], ls2: List[List[String]]): List[String] = ls2 match {
+          case head :: tail => recursiveIntersect(ls1 intersect head, tail)
+          case Nil => ls1
+        }
+        recursiveIntersect(ls.head, ls.tail)
+      }*/
+
       /** Print output*/
-      val pw = new PrintWriter(config.output)      
-      /**pw.println("$$\tTotal mapped reads\tTotal markers\tPresent markers\tMean read-depth/present marker")
-      clusters.sorted.foreach { c =>
-        val avgCov = if (averageCov.contains(c)) averageCov(c) else 0
-        pw.println(c + "\t" + markerCounts(c) + "\t" + totalMarkersPerLineage(c) + "\t" + linCountsPresent(c) + "\t" + avgCov)
-      }**/
+      val pw = new PrintWriter(config.output)
+
       pw.println("# Ara Results")
       pw.println("# Command: " + args.mkString(" "))
       pw.println("# ")
       pw.println("Predicted groups: " + paths.map(_.last).mkString(", "))
       pw.println("Mixed infection: " + (paths.size > 1))
-      pw.println
-      intersect.foreach(pw.println)
       
-      pw.close
+      
+      if (paths.size > 1) { // A mixed infection
+        val op = paths.flatten.groupBy(identity).mapValues(_.size).groupBy(_._2).filterNot(_._1 == 1).mapValues(_.keysIterator.toList)
+        println(op)
+        println
+        val overlappingPath = paths.flatten.groupBy(identity).mapValues(_.size).filter(c => c._2 > 1).keysIterator.toList.sorted //intersectAll(paths)
+          .map { c =>
+            (c, medianCov(c))
+          }
+        //paths.flatten.groupBy(identity).mapValues(_.size).filter(c => c._2 > 1).keysIterator.toList.sorted
+        println("Overlapping path")
+        println(overlappingPath)
+        //val totalCovRoot = 
 
-      
-      
+        val splitPaths = paths.map(_.filterNot(c => overlappingPath.map(_._1).contains(c))).map(_.map { c => 
+          (c, medianCov(c))
+        })
+        val splitPathsCov = splitPaths.map { p => //split paths with mean coverage of clusters in path
+          val arr = p.filterNot(_._1.hasZeroMarkers).map(_._2)
+          val meanCov = (arr.foldLeft(0.toDouble)(_ + _) / arr.size.toDouble)
+          (p, meanCov)
+        }
+        println("Split paths")
+        splitPathsCov.foreach(p => println("\t" + p._1 + "\n\t" + p._2))
+        val totalCovSplitPaths = splitPathsCov.map(_._2).foldLeft(0.toDouble)(_ + _)
+        println("Total coverage of present subpopulations: " + totalCovSplitPaths)
+
+      }
+      else {
+        println("One present path")
+        println(paths.flatten.map(c => (c, medianCov(c))))
+      }
+
+
+      /*pw.println
+      pw.println("$$\tTotal mapped reads\tTotal markers\tPresent markers\tMean read-depth/present marker")
+      clusters.sorted.foreach { c =>
+        val avgCov = if (averageCov.contains(c)) averageCov(c) else 0
+        pw.println(c + "\t" + markerCounts(c) + "\t" + totalMarkersPerLineage(c) + "\t" + linCountsPresent(c) + "\t" + avgCov)
+      }*/
+
+      pw.close
 
     }
 

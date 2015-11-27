@@ -246,6 +246,7 @@ object Cluster {
       case "L4.2.2.2.2.2.2.2.1.2.2.2" => true
       case "L4.2.2.2.2.2.2.2.2.1" => true
       case "L4.2.2.2.2.2.2.2.2.2" => true
+      case "L5" => true
       case "L6.1" => true
       case "L6.2" => true
       case "LB" => true
