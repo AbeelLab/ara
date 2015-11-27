@@ -38,12 +38,14 @@ object Cluster {
     }
 
     def hasAncestor: Boolean = s match {
-      case "L1-L2-L3-L4" => false
-      case "L5-L6-LB" => false
+      case "MTBC" => false
+      //case "L1-L2-L3-L4" => false
+      //case "L5-L6-LB" => false
       case _ => true
     }
     
     def hasZeroMarkers: Boolean = s match {
+      case "MTBC" => true
       case "L1.2.1.2" => true
       case "L1.2.1.2.2.2.1.1.2" => true
       case "L1.2.1.2.2.2.2.1" => true
