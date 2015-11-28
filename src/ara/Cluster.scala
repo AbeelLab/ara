@@ -43,7 +43,7 @@ object Cluster {
     }
     
     def getSibling: String = s match {
-      case x if (x.contains(".")) => if (x.last == 1) x.dropRight(1) + "2" else x.dropRight(1) + "1"
+      case x if (x.contains(".")) => if (x.endsWith("1")) x.dropRight(1) + "2" else x.dropRight(1) + "1"
       case "L1-L2-L3-L4" => "L5-L6-LB"
       case "L5-L6-LB" => "L1-L2-L3-L4"
       case "L1" => "L2-L3-L4"
