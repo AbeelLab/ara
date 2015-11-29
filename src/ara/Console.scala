@@ -49,7 +49,7 @@ object Console {
       println("\tall-bj-markers\t\tCombine multiple marker files into one.")
       println("\tref-DR-region\t\tCreate minimized version of reference genome containing known DR-regions.")
       println
-      println("\tprepare-ara\tPrepare sbatch scripts to run Ara.")
+      println("\tprepare-ara\t\tPrepare sbatch scripts to run Ara.")
       println("\tprepare-drmapping\tPrepare slurm script for each sample to detect drug resistance.")
       println("\tprepare-bluejay\t\tPrepare slurm script for hierarchical clusters for SNP-association.")
     }    

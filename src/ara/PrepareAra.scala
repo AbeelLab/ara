@@ -65,10 +65,10 @@ object PrepareAra {
           pw2.println("#SBATCH --job-name=ara-interpreter-" + name)
           pw2.println("#SBATCH --workdir=" + s)
           pw2.println("#SBATCH --partition=short --qos=short")
-          pw2.println("#SBATCH --mem=3000")
+          pw2.println("#SBATCH --mem=1000")
           pw2.println("#SBATCH --output=ara-interpreter.out")
           pw2.println
-          pw2.println("java -Xmx3g -jar /tudelft.net/staff-bulk/ewi/insy/DBL/Arlin/ara-development/ara.jar interpret -m " + name + ".ara -o " + name)
+          pw2.println("java -jar /tudelft.net/staff-bulk/ewi/insy/DBL/Arlin/ara-development/ara.jar interpret -m " + name + ".ara -o " + name)
           
           pw2.close
           
