@@ -121,14 +121,20 @@ object AraUtilities extends MTBCclusters {
         presence(children(0)) || presence(children(1))
       }
 
+      def ancestorIsPresent(c: String): Boolean = {
+        val ancestor = c.getAncestor
+        presence(c)
+      }
+      
+      
       /**
        *  Interpret results
        */
 
       val pw = new PrintWriter(config.output)
 
-      val clusters = mtbcClusters.filter { c => presence(c) }.filterNot(c => childIsPresent(c))
-      println("Possible present cluster(s)\tMean coverage\tMedian coverage")
+      val clusters = mtbcClusters.filter { c => presence(c) }.filterNot(c => childIsPresent(c)).filter(ancestorIsPresent(_))
+      println("Possible present end cluster(s)\tMean coverage\tMedian coverage")
       clusters.sorted.foreach(c => if (c.hasZeroMarkers) println(c + "\t" + 0 + "\t" + 0) else println(c + "\t" + averageCov(c) + "\t" + medianCov(c)))
       println
       
@@ -138,11 +144,6 @@ object AraUtilities extends MTBCclusters {
       println*/
 
       val paths = clusters.map(getPath(_)).filterNot { p =>
-        
-        println(p.map{c => 
-          val mCount = if (linCountsPresent.contains(c)) linCountsPresent(c) else 0
-          (c, presence(c), mCount, medianCov(c))
-        })
         val path = p.map(c => presence(c))
         path.contains(false)
       }
@@ -297,7 +298,7 @@ object AraUtilities extends MTBCclusters {
 
       } else { // No path detected
 
-        pw.println("Predicted groups: NONE")
+        pw.println("Predicted group(s): NONE")
         pw.println("Mixed sample: FALSE")
 
       }

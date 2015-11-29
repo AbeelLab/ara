@@ -11,6 +11,7 @@ object Console {
         case "help" => listInstructions
         case "snp-typer" => MacawSNPtyper.main(args.drop(1))
         case "interpret" => AraUtilities.main(args.drop(1))
+        case "list-results" => ListAraResults.main(args.drop(1))
         //case "interpret-macaw" => MacawUtilities.main(args.drop(1))
         //case "interpret-DR" => DrugResistances.main(args.drop(1))
         //case "mutation-rate-DR" => MutationRate.main(args.drop(1))
@@ -35,6 +36,7 @@ object Console {
       println("Instructions:")
       println("\tSNP-typer\t\tDetect presence/absence of SNP markers to detect mixed infection/drug resistance.")
       println("\tinterpret-macaw\t\tInterpret MTBC hierarchy clusters from SNP-typer results.")
+      println("\tlist-results\t\tList all ara results in a data directory.")
       //println("\tinterpret-DR\t\tInterpret drug resistances from SNP-typer results.")
       println
       println("\tvcf2snp-phylip\t\tWrite phy-file from SNP sequences.")
