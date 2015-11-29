@@ -73,14 +73,18 @@ object AraUtilities extends MTBCclusters {
        * Clusters with 0 markers could be present, so function return true for these clusters.
        */
       def presence(c: String): Boolean = {
-        if (c.hasZeroMarkers || c == "MTBC") return true
-        val totalMarkers = totalMarkersPerLineage(c)
-        val presentMarkers = linCountsPresent(c)
-        if (c.hasReference) {
-          presentMarkers > (totalMarkers / 30)
-        } else {
-          presentMarkers > (totalMarkers / 10)
+        if (c.hasZeroMarkers || c == "MTBC") true
+        else if (!c.isCluster) false
+        else {
+          val totalMarkers = totalMarkersPerLineage(c)
+          val presentMarkers = linCountsPresent(c)
+          if (c.hasReference) {
+            presentMarkers > (totalMarkers / 30)
+          } else {
+            presentMarkers > (totalMarkers / 10)
+          }
         }
+        
       }
 
       /** Recursive call to get tree path from leaf to root */
@@ -101,25 +105,44 @@ object AraUtilities extends MTBCclusters {
 
       /** Split paths by present strains */
       def splitPaths(ls: List[List[String]]): List[List[String]] = {
-        val pathCount = ls.flatten.groupBy(identity).mapValues(_.size)
+        if (ls.isEmpty) List.empty[List[String]]
+        else {val pathCount = ls.flatten.groupBy(identity).mapValues(_.size)
         val maxPaths = pathCount.map(_._2).max
         val separatedPaths = (1 to maxPaths).toList.map { number =>
           val path = ls.map(_.filter(pathCount(_) == number)).distinct.filterNot(_.isEmpty)
           (number -> path)
         }.toMap
-        separatedPaths.flatMap(_._2).toList
+        separatedPaths.flatMap(_._2).toList}
+        
+      }
+      
+      def childIsPresent(c: String): Boolean = {
+        val children = c.children
+        presence(children(0)) || presence(children(1))
       }
 
       /**
        *  Interpret results
        */
 
-      val presentLeaves = mtbcClusters.filter(_.isLeafCluster).filter { c => presence(c) }
+      val pw = new PrintWriter(config.output)
+
+      val clusters = mtbcClusters.filter { c => presence(c) }.filterNot(c => childIsPresent(c))
+      println("Possible present cluster(s)\tMean coverage\tMedian coverage")
+      clusters.sorted.foreach(c => if (c.hasZeroMarkers) println(c + "\t" + 0 + "\t" + 0) else println(c + "\t" + averageCov(c) + "\t" + medianCov(c)))
+      println
+      
+      /*val presentLeaves = mtbcClusters.filter(_.isLeafCluster).filter { c => presence(c) }
       println("Possible present leave(s)\tMean coverage\tMedian coverage")
       presentLeaves.sorted.foreach(c => if (c.hasZeroMarkers) println(c + "\t" + 0 + "\t" + 0) else println(c + "\t" + averageCov(c) + "\t" + medianCov(c)))
-      println
+      println*/
 
-      val paths = presentLeaves.map(getPath(_)).filterNot { p =>
+      val paths = clusters.map(getPath(_)).filterNot { p =>
+        
+        println(p.map{c => 
+          val mCount = if (linCountsPresent.contains(c)) linCountsPresent(c) else 0
+          (c, presence(c), mCount, medianCov(c))
+        })
         val path = p.map(c => presence(c))
         path.contains(false)
       }
@@ -180,7 +203,6 @@ object AraUtilities extends MTBCclusters {
       /**
        *  Print output
        */
-      val pw = new PrintWriter(config.output)
       pw.println("# Ara Results")
       pw.println("# Command: " + args.mkString(" "))
       pw.println("# Date: " + Calendar.getInstance.getTime)
@@ -213,8 +235,8 @@ object AraUtilities extends MTBCclusters {
                 if (pathWith0Markers(siblingPath._2)) { // Misses coverage compared to ancestor (> 10 reads)
                   val frequency = depth / ancestorCov
                   (frequency, getLevel(path), ancestorCov, depth, path)
-                } else if(pathWith0Markers(path)) { // Present path with 0 markers
-                  val frequency = 1 - (depth / ancestorCov) 
+                } else if (pathWith0Markers(path)) { // Present path with 0 markers
+                  val frequency = 1 - (depth / ancestorCov)
                   (frequency, getLevel(path), ancestorCov, depth, path)
                 } else {
                   val totalCovSiblings = siblingPath._1 + depth
@@ -234,7 +256,7 @@ object AraUtilities extends MTBCclusters {
             case "MTBC" => List(head)
             case x => x :: getAncestralNodes(meanCovPerPath2.map(_._2).filter(_.contains(x.getAncestor)).head)
           }
-          case Nil =>  Nil
+          case Nil => Nil
         }
 
         /** Multiply frequencies of separate paths to ancestor */

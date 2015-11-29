@@ -1,6 +1,6 @@
 package ara
 
-object Cluster {
+object Cluster extends MTBCclusters {
   class Cluster(s: String) {
 
     def hasReference: Boolean = s match {
@@ -57,6 +57,21 @@ object Cluster {
       case "L6" => "LB"
       case "LB" => "L6"
       case _ => null
+    }    
+     
+    def children: Array[String] = s match {
+      case "MTBC" => Array("L1-L2-L3-L4", "L5-L6-LB")
+      case "L1-L2-L3-L4" => Array("L1", "L2-L3-L4")
+      case "L5-L6-LB" => Array("L5", "L6-LB")
+      case "L2-L3-L4" => Array("L2-L3", "L4")
+      case "L2-L3" => Array("L2", "L3")
+      case "L6-LB" => Array("L6", "LB")
+      case x if (mtbcClusters.contains(x)) => Array(x + ".1", x + ".2")
+      case _ => Array(null, null)
+    }
+    
+    def isCluster: Boolean = {
+      mtbcClusters.contains(s)
     }
     
     def hasZeroMarkers: Boolean = s match {
