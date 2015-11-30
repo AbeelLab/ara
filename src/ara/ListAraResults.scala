@@ -22,13 +22,14 @@ object ListAraResults {
       
       
       study.foreach{study => 
+        println("Reading " + study.getName + "...")
         val sampleDirs = study.listFiles().filter(f => f.isDirectory())
         sampleDirs.foreach{ s =>
           val files = s.listFiles().filter(f => f.getName.endsWith(".interpret.ara"))
           if (!files.isEmpty) {
-            val file = files.head
-            val predicted = Source.fromFile(file).getLines().toList(5).drop(20)
-            pw.println(study.getName + "\t" + s.getName() + "\t" + predicted)
+            val lines = Source.fromFile(files.head).getLines().toList.take(6).drop(4)
+            if (lines(0) == "") pw.println(study.getName + "\t" + s.getName() + "\t" + lines(1).drop(20) +"\t" + "-")
+            else pw.println(study.getName + "\t" + s.getName() + "\t" + lines(1).drop(20) +"\t" + lines(0))
           }
         }
       }

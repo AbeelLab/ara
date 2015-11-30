@@ -79,9 +79,9 @@ object AraUtilities extends MTBCclusters {
           val totalMarkers = totalMarkersPerLineage(c)
           val presentMarkers = linCountsPresent(c)
           if (c.hasReference) {
-            presentMarkers > (totalMarkers / 30)
+            presentMarkers > (totalMarkers / 24)
           } else {
-            presentMarkers > (totalMarkers / 10)
+            presentMarkers > (totalMarkers / 8)
           }
         }
         
@@ -138,11 +138,6 @@ object AraUtilities extends MTBCclusters {
       clusters.sorted.foreach(c => if (c.hasZeroMarkers) println(c + "\t" + 0 + "\t" + 0) else println(c + "\t" + averageCov(c) + "\t" + medianCov(c)))
       println
       
-      /*val presentLeaves = mtbcClusters.filter(_.isLeafCluster).filter { c => presence(c) }
-      println("Possible present leave(s)\tMean coverage\tMedian coverage")
-      presentLeaves.sorted.foreach(c => if (c.hasZeroMarkers) println(c + "\t" + 0 + "\t" + 0) else println(c + "\t" + averageCov(c) + "\t" + medianCov(c)))
-      println*/
-
       val paths = clusters.map(getPath(_)).filterNot { p =>
         val path = p.map(c => presence(c))
         path.contains(false)
@@ -154,8 +149,11 @@ object AraUtilities extends MTBCclusters {
       val meanCovPerPath = splitPaths(paths).map { path =>
         (meanCovPath(path), path)
       }
-      println("Mean coverage per path")
-      meanCovPerPath.foreach(println)
+      println("Mean coverage per path (markers, cluster)")
+      meanCovPerPath.foreach(p => println(p._1 + "\t"  + p._2.map{c => 
+        val markers = if (linCountsPresent.contains(c)) linCountsPresent(c) + "/" + (if (c.hasReference) totalMarkersPerLineage(c)/3 else totalMarkersPerLineage(c)) else "0"
+        (markers, c)
+      }))
       println
 
       /** Check possible presence of (separate) paths where each cluster has 0 markers */
@@ -171,7 +169,10 @@ object AraUtilities extends MTBCclusters {
               if (siblingPath != null) { // sibling path exists
                 val siblingCov = siblingPath._1
                 val ancestorCov = meanCovPerPath.filter(_._2.contains(path.head.getAncestor)).head._1
-                if (((ancestorCov - siblingCov) > 10)) { // If there is missing read depth compared to ancestor, then path with 0 markers is present
+                if (((ancestorCov - siblingCov) > 25)) { // If there is missing read depth >25 compared to ancestor, then path with 0 markers is present
+                  println("Mean " + mean + ", path\n"  + path)
+                  println("SibCov: " + siblingCov)
+                  println("ancCov: " + ancestorCov)
                   false
                 } else { // No missing read depth compared to ancestor, so path with 0 markers is not present
                   true
@@ -200,14 +201,14 @@ object AraUtilities extends MTBCclusters {
       println("Mean coverage per present path")
       meanCovPerPath2.foreach(println)
       println
-
+      
       /**
        *  Print output
        */
       pw.println("# Ara Results")
       pw.println("# Command: " + args.mkString(" "))
       pw.println("# Date: " + Calendar.getInstance.getTime)
-      pw.println("# " + presentPaths.size + " present strain(s)/path(s)\n")
+      pw.println("# " + presentPaths.size + " present strain(s)/path(s)")
 
       if (meanCovPerPath2.size > 1) { // Mixed infection, estimate frequencies
 
@@ -220,6 +221,8 @@ object AraUtilities extends MTBCclusters {
           case Nil => 0
         }
 
+        var suspicious = false // Multiple paths but no missing read coverage
+        
         val pathNumbers = meanCovPerPath2.map {
           _ match {
             case (depth, path) => {
@@ -233,14 +236,15 @@ object AraUtilities extends MTBCclusters {
                 val sibling = path.head.getSibling
                 val siblingPath = meanCovPerPath2.filter(_._2.contains(sibling)).head
                 val ancestorCov = meanCovPerPath2.filter(_._2.contains(path.head.getAncestor)).head._1
-                if (pathWith0Markers(siblingPath._2)) { // Misses coverage compared to ancestor (> 10 reads)
+                if (pathWith0Markers(siblingPath._2)) { // Misses coverage compared to ancestor (> 25 reads)
                   val frequency = depth / ancestorCov
                   (frequency, getLevel(path), ancestorCov, depth, path)
                 } else if (pathWith0Markers(path)) { // Present path with 0 markers
-                  val frequency = 1 - (depth / ancestorCov)
+                  val frequency = 1 - (siblingPath._1 / ancestorCov)
                   (frequency, getLevel(path), ancestorCov, depth, path)
                 } else {
                   val totalCovSiblings = siblingPath._1 + depth
+                  if ((totalCovSiblings - ancestorCov) > 25) suspicious = true
                   val frequency = depth / totalCovSiblings
                   (frequency, getLevel(path), totalCovSiblings, depth, path)
                 }
@@ -261,7 +265,7 @@ object AraUtilities extends MTBCclusters {
         }
 
         /** Multiply frequencies of separate paths to ancestor */
-        val frequencies = pathNumbers.filter(p => p._5.map(_.isLeafCluster).contains(true)).map { p =>
+        val frequencies = pathNumbers.filterNot(p => (p._5.last.children.map(cc => presence(cc)).contains(true))).map { p =>
           val ancestors = getAncestralNodes(p._5)
           val freqArr = ancestors.map(a => pathNumbers.filter(_._5.contains(a)).head).map(_._1)
           (p._5.last, (freqArr.foldLeft(1.toDouble)(_ * _)))
@@ -269,10 +273,11 @@ object AraUtilities extends MTBCclusters {
         println("Frequencies")
         frequencies.foreach(println)
         println
-
+        
+        if (suspicious) pw.println("SUSPICIOUS") else pw.println()
         pw.println("Predicted group(s): " + frequencies.map(p => p._1 + "(" + p._2 + ")").mkString(", "))
         def printNumbers(ls: List[(Double, Int, Double, Double, List[String])]) = {
-          pw.println("Mixed sample: TRUE\n")
+          pw.println("Mixed sample: TRUE\n")          
           ls.foreach {
             _ match {
               case (freq, lvl, siblingsDepth, depth, path) => {
@@ -289,6 +294,7 @@ object AraUtilities extends MTBCclusters {
 
       } else if (meanCovPerPath2.size == 1) { // Not a mixed infection
 
+        pw.println()
         pw.println("Predicted group(s): " + presentPaths.map(_.last).mkString(", "))
         pw.println("Mixed sample: FALSE\n")
         pw.println(presentPaths.head.head + " -> " + presentPaths.head.last)
@@ -297,7 +303,8 @@ object AraUtilities extends MTBCclusters {
         pw.println("Frequency estimate: 1.0" + " (" + cov + "/" + cov + ")")
 
       } else { // No path detected
-
+        
+        pw.println()
         pw.println("Predicted group(s): NONE")
         pw.println("Mixed sample: FALSE")
 
