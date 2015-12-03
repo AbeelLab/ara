@@ -30,7 +30,7 @@ object AraUtilities extends MTBCclusters {
       //markers.foreach(pw.println)
 
       /** Count total number of markers per cluster. */
-      val totalMarkersPerLineage = markers.mapValues(_.size)
+      val totalMarkersPerLineage = cNumbers.mapValues(_("markers")) //markers.mapValues(_.size)
       //totalMarkersPerLineage.toList.sortBy(_._1).foreach(println)
       //println("Total markers per lineage")
       //println(totalMarkersPerLineage.foldLeft(0)(_ + _._2))
@@ -73,8 +73,8 @@ object AraUtilities extends MTBCclusters {
        * Clusters with 0 markers could be present, so function return true for these clusters.
        */
       def presence(c: String): Boolean = {
-        if (c.hasZeroMarkers || c == "MTBC") true
-        else if (!c.isCluster) false
+        if (!c.isCluster) false
+        else if (c.hasZeroMarkers || c == "MTBC") true
         else {
           val totalMarkers = totalMarkersPerLineage(c)
           val presentMarkers = linCountsPresent(c)
@@ -120,12 +120,104 @@ object AraUtilities extends MTBCclusters {
 
       def childIsPresent(c: String): Boolean = {
         val children = c.children
-        presence(children(0)) || presence(children(1))
+        if (children(0).isCluster && children(1).isCluster) (presence(children(0)) || presence(children(1)))
+        else false
       }
 
       def ancestorIsPresent(c: String): Boolean = {
         val ancestor = c.getAncestor
         presence(c)
+      }
+
+      /** Check possible presence of (separate) paths where each cluster has 0 markers */
+      def pathWith0Markers(p: List[String]): Boolean = {
+        !p.map(c => c.hasZeroMarkers).contains(false)
+      }
+
+      def removeAbsent(ls: List[List[String]]): List[(Double, List[String])] = {
+        val meanCovPerPath = splitPaths(ls).map { path =>
+          (meanCovPath(path), path)
+        }
+        println("Mean coverage per path (markers, cluster)")
+        meanCovPerPath.foreach(p => println(p._1 + "\t" + p._2.map { c =>
+          val markers = if (linCountsPresent.contains(c)) linCountsPresent(c) + "/" + (if (c.hasReference) totalMarkersPerLineage(c) / 3 else totalMarkersPerLineage(c)) else "0"
+          (markers, c)
+        }))
+        println
+
+        def listAbsent(ls: List[(Double, List[String])]): List[String] = {
+          val absentClusters = ls.filter {
+            _ match {
+              case (mean, path) => {
+                if (path.equals(List("MTBC"))) {
+                  false
+                } else {
+                  val sibling = path.head.getSibling                  
+                  if (sibling != null) { // sibling path exists
+                    val siblingPath = ls.filter(_._2.contains(sibling)).head
+                    val siblingCov = siblingPath._1
+                    val ancestorCov = ls.filter(_._2.contains(path.head.getAncestor)).head._1
+                    if (pathWith0Markers(path)) { // sibling with no markers
+                      if (((ancestorCov - siblingCov) > 25)) { // If there is missing read depth >25 compared to ancestor, then path with 0 markers is present
+                        false
+                      } else { // No missing read depth compared to ancestor, so path with 0 markers is absent
+                        true
+                      }
+                    } else { // sibling with markers
+                      val totalCovSiblings = siblingCov + mean
+                      if ((totalCovSiblings / ancestorCov) > 1.5) { // If unbalanced cluster sizes of siblings
+                        if (path.head.getSize > sibling.getSize) {
+                          true
+                        } else {
+                          false
+                        }
+                      } else {
+                        false
+                      }
+                    }
+                  } else { // sibling path not exists                  
+                    false
+                  }
+                }
+
+               /* if (pathWith0Markers(path) && !path.equals(List("MTBC"))) {
+                  val sibling = path.head.getSibling
+                  val siblingPath = ls.filter(_._2.contains(sibling)).head
+                  if (siblingPath != null) { // sibling path exists
+                    val siblingCov = siblingPath._1
+                    val ancestorCov = ls.filter(_._2.contains(path.head.getAncestor)).head._1
+                    if (((ancestorCov - siblingCov) > 25)) { // If there is missing read depth >25 compared to ancestor, then path with 0 markers is present
+                      println("Mean " + mean + ", path\n" + path)
+                      println("SibCov: " + siblingCov)
+                      println("ancCov: " + ancestorCov)
+                      false
+                    } else { // No missing read depth compared to ancestor, so path with 0 markers is not present
+                      true
+                    }
+                  } else { // sibling path not exists
+                    false
+                  }
+                } else { // Not a path with 0 markers or List("MTBC")
+                  false
+                }*/
+              }
+            }
+          }.flatMap(_._2)
+          absentClusters
+        }
+        val absent = listAbsent(meanCovPerPath)
+
+        if (absent.isEmpty) {
+          meanCovPerPath
+        } else {
+          println("Absent cluster with 0 markers or unbalanced cluster")
+          absent.foreach(println)
+          println
+          val presentPaths = ls.filter { p =>
+            p.intersect(absent).isEmpty
+          }
+          removeAbsent(presentPaths)
+        }
       }
 
       /**
@@ -146,75 +238,8 @@ object AraUtilities extends MTBCclusters {
       println("Possible present path(s)")
       paths.foreach(p => println(p.map(c => (medianCov(c), c))))
       println
-      
 
-      /** Check possible presence of (separate) paths where each cluster has 0 markers */
-      def pathWith0Markers(p: List[String]): Boolean = {
-        !p.map(c => c.hasZeroMarkers).contains(false)
-      }
-
-      def removeAbsent(ls: List[List[String]]): List[(Double, List[String])] = {
-        val meanCovPerPath = splitPaths(ls).map { path =>
-          (meanCovPath(path), path)
-        }
-        println("Mean coverage per path (markers, cluster)")
-        meanCovPerPath.foreach(p => println(p._1 + "\t" + p._2.map { c =>
-          val markers = if (linCountsPresent.contains(c)) linCountsPresent(c) + "/" + (if (c.hasReference) totalMarkersPerLineage(c) / 3 else totalMarkersPerLineage(c)) else "0"
-          (markers, c)
-        }))
-        println
-        
-        def listAbsent(ls: List[(Double, List[String])]): List[String] = {
-          val absentClusters = ls.filter {
-            _ match {
-              case (mean, path) => {
-                if (pathWith0Markers(path) && !path.equals(List("MTBC"))) {
-                  val sibling = path.head.getSibling
-                  val siblingPath = ls.filter(_._2.contains(sibling)).head
-                  if (siblingPath != null) { // sibling path exists
-                    val siblingCov = siblingPath._1
-                    val ancestorCov = ls.filter(_._2.contains(path.head.getAncestor)).head._1
-                    if (((ancestorCov - siblingCov) > 25)) { // If there is missing read depth >25 compared to ancestor, then path with 0 markers is present
-                      println("Mean " + mean + ", path\n" + path)
-                      println("SibCov: " + siblingCov)
-                      println("ancCov: " + ancestorCov)
-                      false
-                    } else { // No missing read depth compared to ancestor, so path with 0 markers is not present
-                      true
-                    }
-                  } else { // sibling path not exists
-                    false
-                  }
-                } else { // Not a path with 0 markers or List("MTBC")
-                  false
-                }
-              }
-            }
-          }.flatMap(_._2)
-          absentClusters
-        }
-        val absent = listAbsent(meanCovPerPath)
-        
-        if (absent.isEmpty) {
-          meanCovPerPath
-        } else {
-          println("Absent clusters with 0 markers")
-          absent.foreach(println)
-          println
-          val presentPaths = ls.filter { p =>
-            p.intersect(absent).isEmpty
-          }
-          removeAbsent(presentPaths)
-        }
-      }
-
-      val meanCovPerPath2 = removeAbsent(paths)
-      println("Mean coverage per path (markers, cluster)")
-      meanCovPerPath2.foreach(p => println(p._1 + "\t" + p._2.map { c =>
-        val markers = if (linCountsPresent.contains(c)) linCountsPresent(c) + "/" + (if (c.hasReference) totalMarkersPerLineage(c) / 3 else totalMarkersPerLineage(c)) else "0"
-        (markers, c)
-      }))
-      println
+      val seperatePaths = removeAbsent(paths)
 
       /**
        *  Print output
@@ -222,35 +247,35 @@ object AraUtilities extends MTBCclusters {
       pw.println("# Ara Results")
       pw.println("# Command: " + args.mkString(" "))
       pw.println("# Date: " + Calendar.getInstance.getTime)
-      val strains = meanCovPerPath2.filterNot(p => childIsPresent(p._2.last)).size
+      val strains = seperatePaths.filterNot(p => childIsPresent(p._2.last)).size
       pw.println("# " + strains + " present strain(s)/path(s)")
 
-      if (meanCovPerPath2.size > 1) { // Mixed infection, estimate frequencies
+      if (seperatePaths.size > 1) { // Mixed infection, estimate frequencies
 
         /** Get split level of path */
         def getLevel(p: List[String]): Int = p match {
           case head :: tail => head match {
             case "MTBC" => 0
-            case x => 1 + getLevel(meanCovPerPath2.map(_._2).filter(_.contains(x.getAncestor)).head)
+            case x => 1 + getLevel(seperatePaths.map(_._2).filter(_.contains(x.getAncestor)).head)
           }
           case Nil => 0
         }
 
         var suspicious = false // Multiple paths but no missing read coverage
 
-        val pathNumbers = meanCovPerPath2.map {
+        val pathNumbers = seperatePaths.map {
           _ match {
             case (depth, path) => {
               if (path.head == "MTBC") { // root path
                 if (path.size == 1) { // root path only contains cluster MTBC
-                  val rootNodes = meanCovPerPath2.filter(p => p._2.head == "L1-L2-L3-L4" || p._2.head == "L5-L6-LB" || p._2.head == "MTBC")
+                  val rootNodes = seperatePaths.filter(p => p._2.head == "L1-L2-L3-L4" || p._2.head == "L5-L6-LB" || p._2.head == "MTBC")
                   val rootMeanCov = rootNodes.map(_._1).foldLeft(0.toDouble)(_ + _)
                   (1.toDouble, getLevel(path), rootMeanCov, rootMeanCov, path)
                 } else (1.toDouble, getLevel(path), depth, depth, path)
               } else { //non-root path
                 val sibling = path.head.getSibling
-                val siblingPath = meanCovPerPath2.filter(_._2.contains(sibling)).head
-                val ancestorCov = meanCovPerPath2.filter(_._2.contains(path.head.getAncestor)).head._1
+                val siblingPath = seperatePaths.filter(_._2.contains(sibling)).head
+                val ancestorCov = seperatePaths.filter(_._2.contains(path.head.getAncestor)).head._1
                 if (pathWith0Markers(siblingPath._2)) { // Misses coverage compared to ancestor (> 25 reads)
                   val frequency = depth / ancestorCov
                   (frequency, getLevel(path), ancestorCov, depth, path)
@@ -274,7 +299,7 @@ object AraUtilities extends MTBCclusters {
         def getAncestralNodes(p: List[String]): List[String] = p match {
           case head :: tail => head match {
             case "MTBC" => List(head)
-            case x => x :: getAncestralNodes(meanCovPerPath2.map(_._2).filter(_.contains(x.getAncestor)).head)
+            case x => x :: getAncestralNodes(seperatePaths.map(_._2).filter(_.contains(x.getAncestor)).head)
           }
           case Nil => Nil
         }
@@ -307,10 +332,10 @@ object AraUtilities extends MTBCclusters {
         }
         printNumbers(pathNumbers)
 
-      } else if (meanCovPerPath2.size == 1) { // Not a mixed infection
+      } else if (seperatePaths.size == 1) { // Not a mixed infection
 
-        val path = meanCovPerPath2.head._2
-        val cov = meanCovPerPath2.head._1
+        val path = seperatePaths.head._2
+        val cov = seperatePaths.head._1
 
         pw.println()
         pw.println("Predicted group(s): " + path.last)
