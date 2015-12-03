@@ -152,7 +152,7 @@
 
     		<fileset dir="resources">
 
-    	  		<include name="hierclusters_global_bluejaymarkers" />
+    	  		<include name="hierclusters_global_*" />
     	   		<include name="Coll2015DrugResistances.txt" />
     		    						
     	  	</fileset>
