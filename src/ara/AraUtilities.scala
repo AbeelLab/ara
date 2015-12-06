@@ -149,14 +149,16 @@ object AraUtilities extends MTBCclusters {
           val absentClusters = ls.filter {
             _ match {
               case (mean, path) => {
+
                 if (path.equals(List("MTBC"))) {
                   false
                 } else {
-                  val sibling = path.head.getSibling                  
+                  val sibling = path.head.getSibling
                   if (sibling != null) { // sibling path exists
                     val siblingPath = ls.filter(_._2.contains(sibling)).head
                     val siblingCov = siblingPath._1
-                    val ancestorCov = ls.filter(_._2.contains(path.head.getAncestor)).head._1
+                    val ancestor = path.head.getAncestor
+                    val ancestorCov = ls.filter(_._2.contains(ancestor)).head._1
                     if (pathWith0Markers(path)) { // sibling with no markers
                       if (((ancestorCov - siblingCov) > 25)) { // If there is missing read depth >25 compared to ancestor, then path with 0 markers is present
                         false
@@ -164,42 +166,30 @@ object AraUtilities extends MTBCclusters {
                         true
                       }
                     } else { // sibling with markers
-                      val totalCovSiblings = siblingCov + mean
-                      if ((totalCovSiblings / ancestorCov) > 1.5) { // If unbalanced cluster sizes of siblings
-                        if (path.head.getSize > sibling.getSize) {
-                          true
+                      if (ancestor == "MTBC") {
+                        false
+                      } else {
+                        val totalCovSiblings = siblingCov + mean
+                        if ((totalCovSiblings / ancestorCov) > 1.5) { // If unbalanced cluster sizes of siblings
+                          println("path: " + path + ", sibling: " + sibling)
+                          println(totalCovSiblings + " / " + ancestorCov + " = " + (totalCovSiblings / ancestorCov))
+                          if (path.head.getSize > sibling.getSize) {
+                            println(path.head.getSize + " > " + sibling.getSize)
+                            true
+                          } else {
+                            false
+                          }
                         } else {
                           false
                         }
-                      } else {
-                        false
                       }
+
                     }
                   } else { // sibling path not exists                  
                     false
                   }
                 }
 
-               /* if (pathWith0Markers(path) && !path.equals(List("MTBC"))) {
-                  val sibling = path.head.getSibling
-                  val siblingPath = ls.filter(_._2.contains(sibling)).head
-                  if (siblingPath != null) { // sibling path exists
-                    val siblingCov = siblingPath._1
-                    val ancestorCov = ls.filter(_._2.contains(path.head.getAncestor)).head._1
-                    if (((ancestorCov - siblingCov) > 25)) { // If there is missing read depth >25 compared to ancestor, then path with 0 markers is present
-                      println("Mean " + mean + ", path\n" + path)
-                      println("SibCov: " + siblingCov)
-                      println("ancCov: " + ancestorCov)
-                      false
-                    } else { // No missing read depth compared to ancestor, so path with 0 markers is not present
-                      true
-                    }
-                  } else { // sibling path not exists
-                    false
-                  }
-                } else { // Not a path with 0 markers or List("MTBC")
-                  false
-                }*/
               }
             }
           }.flatMap(_._2)
@@ -219,6 +209,8 @@ object AraUtilities extends MTBCclusters {
           removeAbsent(presentPaths)
         }
       }
+      
+      
 
       /**
        *  Interpret results
@@ -226,7 +218,7 @@ object AraUtilities extends MTBCclusters {
 
       val pw = new PrintWriter(config.output)
 
-      val clusters = mtbcClusters.filter { c => presence(c) }.filterNot(c => childIsPresent(c)).filter(ancestorIsPresent(_))
+      val clusters = mtbcClusters.filterNot(_ == "MTBC").filter { c => presence(c) }.filterNot(c => childIsPresent(c)).filter(ancestorIsPresent(_))
       println("Possible present end cluster(s)\tMean coverage\tMedian coverage")
       clusters.sorted.foreach(c => if (c.hasZeroMarkers) println(c + "\t" + 0 + "\t" + 0) else println(c + "\t" + averageCov(c) + "\t" + medianCov(c)))
       println
@@ -261,8 +253,6 @@ object AraUtilities extends MTBCclusters {
           case Nil => 0
         }
 
-        var suspicious = false // Multiple paths but no missing read coverage
-
         val pathNumbers = seperatePaths.map {
           _ match {
             case (depth, path) => {
@@ -284,7 +274,6 @@ object AraUtilities extends MTBCclusters {
                   (frequency, getLevel(path), ancestorCov, depth, path)
                 } else {
                   val totalCovSiblings = siblingPath._1 + depth
-                  if ((totalCovSiblings - ancestorCov) > 25) suspicious = true
                   val frequency = depth / totalCovSiblings
                   (frequency, getLevel(path), totalCovSiblings, depth, path)
                 }
@@ -314,7 +303,7 @@ object AraUtilities extends MTBCclusters {
         frequencies.foreach(println)
         println
 
-        if (suspicious) pw.println("SUSPICIOUS") else pw.println()
+        pw.println
         pw.println("Predicted group(s): " + frequencies.map(p => p._1 + "(" + p._2 + ")").mkString(", "))
         def printNumbers(ls: List[(Double, Int, Double, Double, List[String])]) = {
           pw.println("Mixed sample: TRUE\n")
