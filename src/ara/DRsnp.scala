@@ -1,5 +1,8 @@
 package ara
 
+/**
+ * Read drug resistance SNP from Coll2015
+ */
 class DRsnp(val drug: String, val locus: String, val locusTag: String, val cp: Int, val r: String, val gp: Int, val a: String, val codonNum: String, val aaChange: String) extends Ordered[DRsnp] {
   
   override def toString(): String = ">" + r + gp + a + "_" + locus + "_" + codonNum + "_" + aaChange + "_resistance_" + drug
