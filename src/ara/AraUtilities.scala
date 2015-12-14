@@ -226,7 +226,7 @@ object AraUtilities extends MTBCclusters {
       val paths = clusters.map(getPath(_)).filterNot { p =>
         val path = p.map(c => presence(c))
         path.contains(false)
-      }
+      }.filterNot(_.last == "L1-L2-L3-L4").filterNot(_.last == "L5-L6-LB")
       println("Possible present path(s)")
       paths.foreach(p => println(p.map(c => (medianCov(c), c))))
       println
