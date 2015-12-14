@@ -231,7 +231,7 @@ object AraUtilities extends MTBCclusters {
       paths.foreach(p => println(p.map(c => (medianCov(c), c))))
       println
 
-      val seperatePaths = removeAbsent(paths)
+      val separatePaths = removeAbsent(paths)
 
       /**
        *  Print output
@@ -239,33 +239,33 @@ object AraUtilities extends MTBCclusters {
       pw.println("# Ara Results")
       pw.println("# Command: " + args.mkString(" "))
       pw.println("# Date: " + Calendar.getInstance.getTime)
-      val strains = seperatePaths.filterNot(p => childIsPresent(p._2.last)).size
+      val strains = separatePaths.filterNot(p => childIsPresent(p._2.last)).size
       pw.println("# " + strains + " present strain(s)/path(s)")
 
-      if (seperatePaths.size > 1) { // Mixed infection, estimate frequencies
+      if (separatePaths.size > 1) { // Mixed infection, estimate frequencies
 
         /** Get split level of path */
         def getLevel(p: List[String]): Int = p match {
           case head :: tail => head match {
             case "MTBC" => 0
-            case x => 1 + getLevel(seperatePaths.map(_._2).filter(_.contains(x.getAncestor)).head)
+            case x => 1 + getLevel(separatePaths.map(_._2).filter(_.contains(x.getAncestor)).head)
           }
           case Nil => 0
         }
 
-        val pathNumbers = seperatePaths.map {
+        val pathNumbers = separatePaths.map {
           _ match {
             case (depth, path) => {
               if (path.head == "MTBC") { // root path
                 if (path.size == 1) { // root path only contains cluster MTBC
-                  val rootNodes = seperatePaths.filter(p => p._2.head == "L1-L2-L3-L4" || p._2.head == "L5-L6-LB" || p._2.head == "MTBC")
+                  val rootNodes = separatePaths.filter(p => p._2.head == "L1-L2-L3-L4" || p._2.head == "L5-L6-LB" || p._2.head == "MTBC")
                   val rootMeanCov = rootNodes.map(_._1).foldLeft(0.toDouble)(_ + _)
                   (1.toDouble, getLevel(path), rootMeanCov, rootMeanCov, path)
                 } else (1.toDouble, getLevel(path), depth, depth, path)
               } else { //non-root path
                 val sibling = path.head.getSibling
-                val siblingPath = seperatePaths.filter(_._2.contains(sibling)).head
-                val ancestorCov = seperatePaths.filter(_._2.contains(path.head.getAncestor)).head._1
+                val siblingPath = separatePaths.filter(_._2.contains(sibling)).head
+                val ancestorCov = separatePaths.filter(_._2.contains(path.head.getAncestor)).head._1
                 if (pathWith0Markers(siblingPath._2)) { // Misses coverage compared to ancestor (> 25 reads)
                   val frequency = depth / ancestorCov
                   (frequency, getLevel(path), ancestorCov, depth, path)
@@ -288,7 +288,7 @@ object AraUtilities extends MTBCclusters {
         def getAncestralNodes(p: List[String]): List[String] = p match {
           case head :: tail => head match {
             case "MTBC" => List(head)
-            case x => x :: getAncestralNodes(seperatePaths.map(_._2).filter(_.contains(x.getAncestor)).head)
+            case x => x :: getAncestralNodes(separatePaths.map(_._2).filter(_.contains(x.getAncestor)).head)
           }
           case Nil => Nil
         }
@@ -321,10 +321,10 @@ object AraUtilities extends MTBCclusters {
         }
         printNumbers(pathNumbers)
 
-      } else if (seperatePaths.size == 1) { // Not a mixed infection
+      } else if (separatePaths.size == 1) { // Not a mixed infection
 
-        val path = seperatePaths.head._2
-        val cov = seperatePaths.head._1
+        val path = separatePaths.head._2
+        val cov = separatePaths.head._1
 
         pw.println()
         pw.println("Predicted group(s): " + path.last)
