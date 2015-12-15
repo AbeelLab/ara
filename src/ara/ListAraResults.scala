@@ -27,9 +27,8 @@ object ListAraResults {
         sampleDirs.foreach{ s =>
           val files = s.listFiles().filter(f => f.getName.endsWith(".interpret.ara"))
           if (!files.isEmpty) {
-            val lines = Source.fromFile(files.head).getLines().toList.take(6).drop(4)
-            if (lines(0) == "") pw.println(study.getName + "\t" + s.getName() + "\t" + lines(1).drop(20) +"\t" + "-")
-            else pw.println(study.getName + "\t" + s.getName() + "\t" + lines(1).drop(20) +"\t" + lines(0))
+            val line = Source.fromFile(files.head).getLines().toList(5)
+            pw.println(study.getName + "\t" + s.getName() + "\t" + line.drop(20))
           }
         }
       }
