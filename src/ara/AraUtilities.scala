@@ -170,7 +170,7 @@ object AraUtilities extends MTBCclusters {
                         false
                       } else {
                         val totalCovSiblings = siblingCov + mean
-                        if ((totalCovSiblings / ancestorCov) > 1.5) { // If unbalanced cluster sizes of siblings
+                        if ((totalCovSiblings / ancestorCov) > 1.8) { // If unbalanced cluster sizes of siblings
                           println("path: " + path + ", sibling: " + sibling)
                           println(totalCovSiblings + " / " + ancestorCov + " = " + (totalCovSiblings / ancestorCov))
                           if (path.head.getSize > sibling.getSize) {
