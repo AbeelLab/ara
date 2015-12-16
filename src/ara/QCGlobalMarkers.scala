@@ -34,7 +34,7 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
         case f: File if (f.isFile() && f.getName.endsWith(".ara") && !f.getName.endsWith("interpret.ara")) => List(f)
         case _ => Nil
       }
-      
+
       def listClusterFiles(f: Any): List[File] = f match {
         case f: File if (f.isDirectory()) => f.listFiles().toList.flatMap(listClusterFiles(_))
         case f: File if (f.isFile() && f.getName.endsWith("_cluster")) => List(f)
@@ -45,31 +45,48 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
       val lines = if (config.markerFile != null) tLines(config.markerFile).toList else scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/hierclusters_global_bluejaymarkers")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
       val markers = lines.grouped(2).map(f => (f(0).substring(1))).toList.sortBy(_.split("_")(2))
       /* Load SNP-typer files */
-      val study = listAraFiles(config.directory)
-      println("Ara SNP-typer outputs: " + study.size)
+      val araFile = listAraFiles(config.directory).map(a => (a.getName.dropRight(4) -> a)).toMap
+      println("Ara SNP-typer outputs: " + araFile.size)
       /* Load Ara results */
-      val predictions = tLines(config.araResults).map{line => val arr = line.split("\t"); (arr(1) -> arr(2))}.toMap
+      /*val predictions = tLines(config.araResults).map{line => val arr = line.split("\t"); (arr(1) -> arr(2))}.toMap
       val trnSet = tLines(config.trainingSet).toList.map(_.split("/")(8)).map(s => (s -> predictions(s))).toMap
-      println("Training set size: " + trnSet.size)
+      println("Training set size: " + trnSet.size)*/
       /* Load cluster files */
       val clusterFile = listClusterFiles(config.clusterDir).map(c => (c.getName.split("_")(0) -> c)).toMap
-      val clusters = mtbcClusters.filterNot(_ == "MTBC").map(c => clusterFile(c)).sorted
-      println("Clusters: " + clusters.size)
-      println
-      
+      val clusters = markers.map(_.split("_")(2)).distinct.sorted
+      println("Clusters with  markersets: " + clusters.size)
+      //clusters.foreach(println)
+
+      def markerDetected(marker: String, sample: String): Boolean = {
+        if (araFile.keySet.contains(sample)) {
+          val markerInFile = tLines(araFile(sample)).dropRight(2).map {
+            _ match {
+              case Marker(m, c, p) => new ClusterMarker(m, c, p)
+            }
+          }.filter(m => m.mutInfo == marker).head
+          //println(marker + " is present in " + sample + ": " + markerInFile.isPresent)
+          markerInFile.isPresent
+        } else {
+          false
+        }        
+      }
+
       val pw = new PrintWriter(config.output)
-      pw.println("$$\t" + (clusters.map(_.getName.dropRight(8)).sorted.mkString("\t")))
+      pw.println("$$\t" + (clusters.mkString("\t")))
       markers.foreach { m =>
+
+        pw.print(m + "\t")
+        println(m)
         
-        pw.print(m)
-        
-        clusters.foreach{c => 
+        clusters.map(c => clusterFile(c)).foreach { c =>
           
-          val samples = tLines(c)
-          
-          pw.print(samples.size)
+          val samples = tLines(c).filterNot(_.contains("not")).map(_.split("\t")(0))
+          val present =  samples.map(s => markerDetected(m, s)).count(_ == true)
+          //print("\t" + c  + "\t" + present)
+          //println
+          pw.print(present + "\t")
         }
-        
+
         pw.println
       }
       pw.close
