@@ -12,8 +12,6 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
     val markerFile: File = null,
     val output: String = null,
     val directory: File = null,
-    val araResults: File = null,
-    val trainingSet: File = null,
     val clusterDir: File = null)
 
   def main(args: Array[String]) {
@@ -22,8 +20,6 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
       opt[File]("markers") action { (x, c) => c.copy(markerFile = x) } text ("File containing marker sequences. This file has to be a multi-fasta file with the headers indicating the name of the markers.") //, { v: String => config.spacerFile = v })
       opt[File]('o', "output") required () action { (x, c) => c.copy(output = x + "_qc.txt") } text ("Output name.")
       opt[File]('d', "data-dir") required () action { (x, c) => c.copy(directory = x) } text ("Data directory.")
-      opt[File]('r', "results") required () action { (x, c) => c.copy(araResults = x) } text ("Ara results file.")
-      opt[File]('t', "trainingset") required () action { (x, c) => c.copy(trainingSet = x) } text ("Trainingset: VCF paths file.")
       opt[File]('c', "cluster-dir") required () action { (x, c) => c.copy(clusterDir = x) } text ("Directory with cluster files.")
     }
 
@@ -44,18 +40,15 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
       /* Load markers */
       val lines = if (config.markerFile != null) tLines(config.markerFile).toList else scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/hierclusters_global_bluejaymarkers")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
       val markers = lines.grouped(2).map(f => (f(0).substring(1))).toList.sortBy(_.split("_")(2))
+      println("Markers: " + markers.size)
       /* Load SNP-typer files */
       val araFile = listAraFiles(config.directory).map(a => (a.getName.dropRight(4) -> a)).toMap
       println("Ara SNP-typer outputs: " + araFile.size)
-      /* Load Ara results */
-      /*val predictions = tLines(config.araResults).map{line => val arr = line.split("\t"); (arr(1) -> arr(2))}.toMap
-      val trnSet = tLines(config.trainingSet).toList.map(_.split("/")(8)).map(s => (s -> predictions(s))).toMap
-      println("Training set size: " + trnSet.size)*/
       /* Load cluster files */
       val clusterFile = listClusterFiles(config.clusterDir).map(c => (c.getName.split("_")(0) -> c)).toMap
       val clusters = markers.map(_.split("_")(2)).distinct.sorted
       println("Clusters with  markersets: " + clusters.size)
-      //clusters.foreach(println)
+      println
 
       def markerDetected(marker: String, sample: String): Boolean = {
         if (araFile.keySet.contains(sample)) {
