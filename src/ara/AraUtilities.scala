@@ -376,7 +376,7 @@ object AraUtilities extends MTBCclusters {
       } else if (pathNumbers.size == 1) { // Not a mixed infection
         val path = pathNumbers.head._5
         val cov = pathNumbers.head._4
-        pw.println("Predicted group(s): " + path.last)
+        pw.println("Predicted group(s): " + path.last + "(1.0)")
       } else { // No path detected
         pw.println("Predicted group(s): NONE")
       }
