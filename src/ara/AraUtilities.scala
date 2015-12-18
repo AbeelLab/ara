@@ -307,48 +307,45 @@ object AraUtilities extends MTBCclusters {
       val strains = pathNumbers.filterNot(p => childIsPresent(p._5.last)).size
       pw.println("# " + strains + " present strain(s)/path(s)")
 
-      if (separatePaths.size > 1) { // Mixed infection, estimate frequencies
-
-        val frequencies = getFrequencies(pathNumbers)
-
-        pw.println
-        pw.println("Predicted group(s): " + frequencies.map(p => p._1 + "(" + p._2 + ")").mkString(", "))
-        def printNumbers(ls: List[(Double, Int, Double, Double, List[String])]) = {
-          pw.println("Mixed sample: TRUE\n")
-          ls.foreach {
-            _ match {
-              case (freq, lvl, siblingsDepth, depth, path) => {
-                val space = "\t" * lvl
-                pw.println(space + (if (path.size == 1) path.head else (path.head + " -> " + path.last)))
-                pw.println(space + "Mean read depth: " + depth)
-                pw.println(space + "Frequency estimate: " + freq + " (" + depth + "/" + siblingsDepth + ")")
-                pw.println
-              }
+      def printNumbers(ls: List[(Double, Int, Double, Double, List[String])]) = {
+        if (ls.size < 2) pw.println("Mixed sample: FALSE\n")
+        else pw.println("Mixed sample: TRUE\n")
+        ls.foreach {
+          _ match {
+            case (freq, lvl, siblingsDepth, depth, path) => {
+              val space = "\t" * lvl
+              pw.println(space + (if (path.size == 1) path.head else (path.head + " -> " + path.last)))
+              pw.println(space + "Mean read depth: " + depth)
+              pw.println(space + "Frequency estimate: " + freq + " (" + depth + "/" + siblingsDepth + ")")
+              pw.println
             }
           }
         }
-        printNumbers(pathNumbers)
+      }
 
-      } else if (separatePaths.size == 1) { // Not a mixed infection
+      if (pathNumbers.size > 1) { // Mixed infection, estimate frequencies
+
+        val frequencies = getFrequencies(pathNumbers)
+        pw.println
+        pw.println("Predicted group(s): " + frequencies.map(p => p._1 + "(" + p._2 + ")").mkString(", "))        
+
+      } else if (pathNumbers.size == 1) { // Not a mixed infection
 
         val path = separatePaths.head._2
         val cov = separatePaths.head._1
 
         pw.println()
         pw.println("Predicted group(s): " + path.last)
-        pw.println("Mixed sample: FALSE\n")
-        pw.println(path.head + " -> " + path.last)
-        pw.println("Mean read depth: " + cov)
-        pw.println("Frequency estimate: 1.0" + " (" + cov + "/" + cov + ")")
 
       } else { // No path detected
 
         pw.println()
         pw.println("Predicted group(s): NONE")
-        pw.println("Mixed sample: FALSE")
 
       }
 
+      printNumbers(pathNumbers)
+      
       pw.close
 
     }
