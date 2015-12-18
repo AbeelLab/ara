@@ -22,6 +22,10 @@ object AraUtilities extends MTBCclusters {
 
     parser.parse(args, Config()) map { config =>
 
+      /** 
+       *  Load markers and numbers
+       */
+      
       val markers = Source.fromFile(config.markers).getLines.filterNot(_.startsWith("#")).toList.dropRight(2).map {
         _ match {
           case Marker(m, c, p) => new ClusterMarker(m, c, p)
@@ -29,27 +33,27 @@ object AraUtilities extends MTBCclusters {
       }.groupBy(_.lineage)
       //markers.foreach(pw.println)
 
-      /** Count total number of markers per cluster. */
+      /* Count total number of markers per cluster. */
       val totalMarkersPerLineage = cNumbers.mapValues(_("markers")) //markers.mapValues(_.size)
       //totalMarkersPerLineage.toList.sortBy(_._1).foreach(println)
       //println("Total markers per lineage")
       //println(totalMarkersPerLineage.foldLeft(0)(_ + _._2))
 
-      /** Total number of mapped reads per cluster. */
+      /* Total number of mapped reads per cluster. */
       val markerCounts = markers.map(_ match {
         case (lineage, linMarkers) => (lineage, linMarkers.map(_.count).foldLeft(0)(_ + _))
       })
       //println("markerCounts")
       //markerCounts.toList.sortBy(_._1).foreach(println)
 
-      /** Number of present markers per cluster. */
+      /* Number of present markers per cluster. */
       val linCountsPresent = markers.map(_ match {
         case (lineage, linMarkers) => (lineage, linMarkers.filter(_.isPresent).size)
       })
       //println("LinCountsPresent")
       //linCountsPresent.foreach(pw.println)
 
-      /** Average read depth of present markers per cluster */
+      /* Average read depth of present markers per cluster */
       val averageCov = markers.filter(_ match {
         case (lineage, linMarkers) => linCountsPresent(lineage) > 0
       }).map(_ match {
@@ -57,7 +61,12 @@ object AraUtilities extends MTBCclusters {
       })
       //averageCov.foreach(println)
 
-      /** Median read depth of present markers per cluster */
+      
+      /**
+       * Define functions
+       */
+      
+      /* Median read depth of present markers per cluster */
       def medianCov(c: String): Double = {
         val medianCovMap = markers.map(_ match {
           case (lineage, linMarkers) => {
@@ -68,7 +77,7 @@ object AraUtilities extends MTBCclusters {
         if (c.hasZeroMarkers || c == "MTBC") 0 else medianCovMap(c)
       }
 
-      /**
+      /*
        * Presence of cluster based on number detected markers
        * Clusters with 0 markers could be present, so function return true for these clusters.
        */
@@ -87,7 +96,7 @@ object AraUtilities extends MTBCclusters {
 
       }
 
-      /** Recursive call to get tree path from leaf to root */
+      /* Recursive call to get tree path from leaf to root */
       def getPath(str: String): List[String] = {
         def recursive(ls: List[String]): List[String] = ls.head match {
           case c if (c.hasAncestor) => recursive(c.getAncestor :: ls)
@@ -96,14 +105,14 @@ object AraUtilities extends MTBCclusters {
         recursive(List(str))
       }
 
-      /** Mean coverage of of clusters in path */
+      /* Mean coverage of of clusters in path */
       def meanCovPath(ls: List[String]): Double = {
         val covPerCluster = ls.filterNot(_.hasZeroMarkers).map(c => medianCov(c))
         if (covPerCluster.isEmpty) 0
         else (covPerCluster).foldLeft(0.toDouble)(_ + _) / covPerCluster.size
       }
 
-      /** Split paths by present strains */
+      /* Split paths by present strains */
       def splitPaths(ls: List[List[String]]): List[List[String]] = {
         if (ls.isEmpty) List.empty[List[String]]
         else {
@@ -136,7 +145,7 @@ object AraUtilities extends MTBCclusters {
         presence(c)
       }
 
-      /** Check possible presence of (separate) paths where each cluster has 0 markers */
+      /* Check possible presence of (separate) paths where each cluster has 0 markers */
       def pathWith0Markers(p: List[String]): Boolean = {
         !p.map(c => c.hasZeroMarkers).contains(false)
       }
@@ -150,7 +159,7 @@ object AraUtilities extends MTBCclusters {
         println
       }
       
-      /** Remove absent paths */
+      /* Remove absent paths */
       def removeAbsent(ls: List[List[String]]): List[List[String]] = {
         val meanCovPerPath = meanCovSeparatePaths(ls)
         printCovSeparatePaths(meanCovPerPath)
@@ -218,7 +227,7 @@ object AraUtilities extends MTBCclusters {
         }
       }
 
-      /** Get numbers for separate paths */
+      /* Get numbers for separate paths */
       def pathNums(ls: List[(Double, List[String])]): List[(Double, Int, Double, Double, List[String])] = {
         def getLevel(p: List[String]): Int = p match {
           case head :: tail => head match {
@@ -259,9 +268,9 @@ object AraUtilities extends MTBCclusters {
         res
       }
 
-      /** Multiply frequencies of separate paths to ancestor */
+      /* Multiply frequencies of separate paths to ancestor */
       def getFrequencies(ls: List[(Double, Int, Double, Double, List[String])]): List[(String, Double)] = {
-        /** Get ancestral paths for separate path */
+        /* Get ancestral paths for separate path */
         def getAncestralNodes(p: List[String]): List[String] = p match {
           case head :: tail => head match {
             case "MTBC" => List(head)
@@ -296,6 +305,7 @@ object AraUtilities extends MTBCclusters {
         }
       }
 
+      
       /**
        *  Interpret results and print results in console
        */
