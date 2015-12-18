@@ -118,6 +118,19 @@ object AraUtilities extends MTBCclusters {
 
       }
 
+      def meanCovSeparatePaths(ls: List[List[String]]): List[(Double, List[String])] = {
+        val res = splitPaths(ls).map { path =>
+          (meanCovPath(path), path)
+        }
+        println("Mean coverage per path (markers, cluster)")
+        res.foreach(p => println(p._1 + "\t" + p._2.map { c =>
+          val markers = if (linCountsPresent.contains(c)) linCountsPresent(c) + "/" + (if (c.hasReference) totalMarkersPerLineage(c) / 3 else totalMarkersPerLineage(c)) else "0"
+          (markers, c)
+        }))
+        println
+        res
+      }
+      
       def childIsPresent(c: String): Boolean = {
         val children = c.children
         if (children(0).isCluster && children(1).isCluster) (presence(children(0)) || presence(children(1)))
@@ -135,16 +148,8 @@ object AraUtilities extends MTBCclusters {
       }
 
       /** Remove absent paths */
-      def removeAbsent(ls: List[List[String]]): List[(Double, List[String])] = {
-        val meanCovPerPath = splitPaths(ls).map { path =>
-          (meanCovPath(path), path)
-        }
-        println("Mean coverage per path (markers, cluster)")
-        meanCovPerPath.foreach(p => println(p._1 + "\t" + p._2.map { c =>
-          val markers = if (linCountsPresent.contains(c)) linCountsPresent(c) + "/" + (if (c.hasReference) totalMarkersPerLineage(c) / 3 else totalMarkersPerLineage(c)) else "0"
-          (markers, c)
-        }))
-        println
+      def removeAbsent(ls: List[List[String]]): List[List[String]] = {
+        val meanCovPerPath = meanCovSeparatePaths(ls)
 
         def listAbsent(ls: List[(Double, List[String])]): List[String] = {
           val absentClusters = ls.filter {
@@ -198,7 +203,7 @@ object AraUtilities extends MTBCclusters {
         val absent = listAbsent(meanCovPerPath)
 
         if (absent.isEmpty) {
-          meanCovPerPath
+          ls
         } else {
           println("Absent cluster with 0 markers or unbalanced cluster")
           absent.foreach(println)
@@ -280,8 +285,6 @@ object AraUtilities extends MTBCclusters {
        *  Interpret results
        */
 
-      val pw = new PrintWriter(config.output)
-
       val clusters = mtbcClusters.filterNot(_ == "MTBC").filter { c => presence(c) }.filterNot(c => childIsPresent(c)).filter(ancestorIsPresent(_))
       println("Possible present end cluster(s)\tMean coverage\tMedian coverage")
       clusters.sorted.foreach(c => if (c.hasZeroMarkers) println(c + "\t" + 0 + "\t" + 0) else println(c + "\t" + averageCov(c) + "\t" + medianCov(c)))
@@ -295,18 +298,22 @@ object AraUtilities extends MTBCclusters {
       paths.foreach(p => println(p.map(c => (medianCov(c), c))))
       println
 
-      val separatePaths = removeAbsent(paths)
-      val pathNumbers = pathNums(separatePaths)
-
+      val filteredPaths = removeAbsent(paths)
+      val separatePathsCov = meanCovSeparatePaths(filteredPaths)
+      val pathNumbers = pathNums(separatePathsCov)
+      val frequencies = getFrequencies(pathNumbers)
+      
       /**
        *  Print output
        */
+      val pw = new PrintWriter(config.output)
       pw.println("# Ara Results")
       pw.println("# Command: " + args.mkString(" "))
       pw.println("# Date: " + Calendar.getInstance.getTime)
       val strains = pathNumbers.filterNot(p => childIsPresent(p._5.last)).size
       pw.println("# " + strains + " present strain(s)/path(s)")
-
+      pw.println
+        
       def printNumbers(ls: List[(Double, Int, Double, Double, List[String])]) = {
         if (ls.size < 2) pw.println("Mixed sample: FALSE\n")
         else pw.println("Mixed sample: TRUE\n")
@@ -323,25 +330,14 @@ object AraUtilities extends MTBCclusters {
         }
       }
 
-      if (pathNumbers.size > 1) { // Mixed infection, estimate frequencies
-
-        val frequencies = getFrequencies(pathNumbers)
-        pw.println
-        pw.println("Predicted group(s): " + frequencies.map(p => p._1 + "(" + p._2 + ")").mkString(", "))        
-
+      if (pathNumbers.size > 1) { // Mixed infection, estimate frequencies        
+        pw.println("Predicted group(s): " + frequencies.map(p => p._1 + "(" + p._2 + ")").mkString(", "))
       } else if (pathNumbers.size == 1) { // Not a mixed infection
-
-        val path = separatePaths.head._2
-        val cov = separatePaths.head._1
-
-        pw.println()
+        val path = pathNumbers.head._5
+        val cov = pathNumbers.head._4
         pw.println("Predicted group(s): " + path.last)
-
       } else { // No path detected
-
-        pw.println()
         pw.println("Predicted group(s): NONE")
-
       }
 
       printNumbers(pathNumbers)
