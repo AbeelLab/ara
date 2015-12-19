@@ -6,6 +6,7 @@ import scala.io.Source
 import ara.DRsnp._
 import atk.compbio.gff._
 import atk.util.Tool
+import ara.DRVcfLine._
 
 /**
  *  Read VCF-files of samples mapped against a minimized reference genome,
@@ -16,41 +17,6 @@ import atk.util.Tool
 object DrugResistanceSnps extends CodonConfig with Tool {
 
   case class Config(val vcf: File = null, val gff: File = null, val fasta: File = null)
-
-  class DetectedSNP(val region: String, val pos: Int, val ref: String, val alt: String, val filter: String, val ac: String) {
-    val regionArr = region.split("_")
-    val geneNames = regionArr(4)
-    val chrPos = regionArr.last.split("-")(0).toInt + pos - 1
-    val loci = geneNames.split("/")
-
-    override def toString(): String = region + "\t" + chrPos + "\t" + ref + "/" + alt + "\t" + filter
-  }
-
-  object DetectedSNP {
-    /** Only filter SNPs */
-    def unapply(line: String): Option[(String, Int, String, String, String, String)] = {
-      val arr = line.mkString.split("\t")
-      val region = arr(0)
-      val pos = arr(1).toInt
-      val ref = arr(3)
-      val alt = arr(4)
-      val filter = arr(6)
-      val nucleotides = Array[String]("A", "C", "T", "G")
-      if (nucleotides.contains(ref) && nucleotides.contains(alt)) {
-        val info = arr(7).split(";")
-        val bc = info(5)
-        val qp = info(6)
-        val ac = info(11)
-        Some((region, pos, ref, alt, filter, ac))
-      } //if (ac == "AC=1" || ac == "AC=2") Some((region, pos, ref, alt, filter, ac))
-      else None
-    }
-  }
-
-  def isDetectedSNP(str: String): Boolean = str match {
-    case DetectedSNP(g, r, gp, a, f, i) => true
-    case _ => false
-  }
 
   def complement(seq: String) = {
     seq.map { c =>
@@ -129,6 +95,10 @@ object DrugResistanceSnps extends CodonConfig with Tool {
       l.filterNot(_ == null)
     }
 
+    /*def getInfo(snp: DRVcfLine): Map[String, Any] = {
+      
+    }*/
+    
     parser.parse(args, Config()) map { config =>
 
       /* Prepare GFF map */
@@ -139,19 +109,21 @@ object DrugResistanceSnps extends CodonConfig with Tool {
       val ref = tLines(config.fasta).filterNot(_.startsWith(">")).mkString
 
       /* Read VCF file and filter SNPs */
-      val snps = tLines(config.vcf).filter(isDetectedSNP(_)).map(line => line match {
-        case DetectedSNP(g, p, r, a, f, ac) => new DetectedSNP(g, p, r, a, f, ac)
-      })
-
+      val snps = tLines(config.vcf).map(DRVcfLine(_)).filter(_.isSNP())//tLines(config.vcf).filter(isDetectedSNP(_)).map(line => line match {
+        //case DetectedSNP(g, p, r, a, f, ac) => new DetectedSNP(g, p, r, a, f, ac)
+      //})
+      println("SNPs: " + snps.size)      
+      val ambSnps = snps.filter(_.ambiguous)
+      println("Ambiguous SNPs: " + ambSnps.size)
+      
       println("#Detected mutations ")
-      println("#Drug\tLocus\tChromosome coordinate\tGene coordinate\tNucleotide change\tCodon number\tCodon change\tAmino acid change\tKnown info")
-      snps.foreach { snp =>
+      println("#Drug\tLocus\tChromosome coordinate\tGene coordinate\tNucleotide change\tCodon number\tCodon change\tAmino acid change\tKnown info\tFilter\tBC")
+      val ambSnpInfo = ambSnps.map { snp =>
         //println(snp)
         val loci = snp.loci.map { locus => (locus, gffGenes(locusTag(locus))) }.toList
         //loci.foreach(println)        
-
         val locus = getLocus(snp.chrPos, loci, snp.ref, snp.alt)
-        locus.foreach { l =>
+        val snpInfoPerLocus = locus.map { l =>
           val (codonNumber, codonChange, aminoAcidChange, knownInfo) = { //codonChange on forward strand
             val locusName = l("locus").asInstanceOf[String]
             if (locusName.endsWith("-tail") || locusName.endsWith("-promoter") || locusName.equals("rrl") || locusName.equals("rrs")) {
@@ -185,15 +157,16 @@ object DrugResistanceSnps extends CodonConfig with Tool {
                   else "Known mutation" // + " :" +  knownAac.mkString
                 }
               }
-
               (cn, cc, ac, knownCodon)
             }
           }
-          println(l("drug") + "\t" + l("locus") + "\t" + snp.chrPos + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + codonNumber + "\t" + codonChange + "\t" + aminoAcidChange + "\t" + knownInfo)
+          //println(l("drug") + "\t" + l("locus") + "\t" + snp.chrPos + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + codonNumber + "\t" + codonChange + "\t" + aminoAcidChange + "\t" + knownInfo)
+          (Map("drug" -> l("drug"), "locus" -> l("locus"), "chrPos" -> snp.chrPos, "gene-coordinate" -> l("gene-coordinate"), "nucleotide-change" -> l("nucleotide-change"), "codon-number" -> codonNumber, "codon-change" -> codonChange, "aa-change" -> aminoAcidChange, "known-info" -> knownInfo))
         }
-
-      }
-
+        snpInfoPerLocus.foreach(l => println(l("drug") + "\t" + l("locus") + "\t" + l("chrPos") + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + l("codon-number") + "\t" + l("codon-change") + "\t" + l("aa-change") + "\t" + l("known-info") + "\t" + snp.filter + "\t" + snp.bc))
+        snpInfoPerLocus
+      }.flatten
+      
     }
 
   }
