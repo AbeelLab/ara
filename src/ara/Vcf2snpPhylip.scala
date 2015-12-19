@@ -58,15 +58,15 @@ object Vcf2snpPhylip extends Tool {
 
     parser.parse(args, Config()) map { config =>
       time {
-        val fileList = tLines(config.vcfPathFile).map(new File(_)).toList
-        val refMap = getPositions(fileList) // Map with ref. positions and bases
+        val vcfList = tLines(config.vcfPathFile).map(new File(_)).toList
+        val refMap = getPositions(vcfList) // Map with ref. positions and bases
         println("Writing phy-file...")
         val p = new PrintWriter(config.output)
         
-          p.println(fileList.size + 1 + " " + refMap.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
+          p.println(vcfList.size + 1 + " " + refMap.size) //Print total number of sequences (VCF's) + reference (1st sequence) and total number of SNP positions.
           p.print("H37RV_V5  ")
           refMap.keysIterator.toList.sorted.foreach(pos => p.print(refMap(pos)))
-          fileList.foreach { file => // for each file print sequence
+          vcfList.foreach { file => // for each file print sequence
             val name = file.getParentFile.getName
             val snpMap = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(_.invalidSite).filter(_.isSNP).map(_ match {
               case SNP(r, c, a) => (c, a)
@@ -82,7 +82,7 @@ object Vcf2snpPhylip extends Tool {
             println(name + ":\t" + snpMap.size + "\tSNPs")          
         }
         p.close
-        println("Total of " + fileList.size + " VCFs read.")
+        println("Total of " + vcfList.size + " VCFs read.")
         println("Length of SNP sequences: " + refMap.size)
         println("Output: " + args(1))
       }
