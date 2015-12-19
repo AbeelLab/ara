@@ -5,6 +5,7 @@ import java.io.PrintWriter
 import scala.io.Source
 import ara.Cluster._
 import atk.util.Tool
+import Array._
 
 object QCGlobalMarkers extends MTBCclusters with Tool {
 
@@ -12,7 +13,8 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
     val markerFile: File = null,
     val output: String = null,
     val directory: File = null,
-    val clusterDir: File = null)
+    val clusterDir: File = null,
+    val trnSet: File = null)
 
   def main(args: Array[String]) {
 
@@ -21,6 +23,7 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
       opt[File]('o', "output") required () action { (x, c) => c.copy(output = x + "_qc.txt") } text ("Output name.")
       opt[File]('d', "data-dir") required () action { (x, c) => c.copy(directory = x) } text ("Data directory.")
       opt[File]('c', "cluster-dir") required () action { (x, c) => c.copy(clusterDir = x) } text ("Directory with cluster files.")
+      opt[File]('t', "trn-set") required () action { (x, c) => c.copy(trnSet = x) } text ("VCF path file")
     }
 
     parser.parse(args, Config()) map { config =>
@@ -37,52 +40,78 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
         case _ => Nil
       }
 
-      /* Load markers */
-      val lines = if (config.markerFile != null) tLines(config.markerFile).toList else scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/hierclusters_global_bluejaymarkers")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
-      val markers = lines.grouped(2).map(f => (f(0).substring(1))).toList.sortBy(_.split("_")(2))
-      println("Markers: " + markers.size)
-      /* Load SNP-typer files */
-      val araFile = listAraFiles(config.directory).map(a => (a.getName.dropRight(4) -> a)).toMap
-      println("Ara SNP-typer outputs: " + araFile.size)
-      /* Load cluster files */
-      val clusterFile = listClusterFiles(config.clusterDir).map(c => (c.getName.split("_")(0) -> c)).toMap
-      val clusters = markers.map(_.split("_")(2)).distinct.sorted
-      println("Clusters with  markersets: " + clusters.size)
-      println
-
-      def markerDetected(marker: String, sample: String): Boolean = {
-        if (araFile.keySet.contains(sample)) {
-          val markerInFile = tLines(araFile(sample)).dropRight(2).map {
-            _ match {
-              case Marker(m, c, p) => new ClusterMarker(m, c, p)
-            }
-          }.filter(m => m.mutInfo == marker).head
-          //println(marker + " is present in " + sample + ": " + markerInFile.isPresent)
-          markerInFile.isPresent
-        } else {
-          false
-        }        
+      /** Elapsed time function */
+      def time[R](block: => R): R = {
+        val t0 = System.currentTimeMillis()
+        val result = block // call-by-name
+        val t1 = System.currentTimeMillis()
+        println("Elapsed time: " + (t1 - t0) + "ms")
+        result
       }
 
-      val pw = new PrintWriter(config.output)
-      pw.println("$$\t" + (clusters.mkString("\t")))
-      markers.foreach { m =>
+      time {
+        /* Load markers */
+        val lines = if (config.markerFile != null) tLines(config.markerFile).toList else scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/hierclusters_global_bluejaymarkers")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
+        val markers = lines.grouped(2).map(f => (f(0).substring(1))).toList.sortBy(_.split("_")(2))
+        println("Markers: " + markers.size)
+        /* Load cluster files */
+        val clusterNames = markers.map(_.split("_")(2)).distinct.sorted
+        val clusterMap = listClusterFiles(config.clusterDir).filter(f => clusterNames.contains(f.getName.dropRight(8))).map { c =>
+          val strains = tLines(c).filterNot(_.contains("not")).map(_.split("\t")(0))
+          strains.map(s => (s, c.getName.split("_")(0)))
+        }.flatten.groupBy(_._1).mapValues(_.map(_._2))
+        println("Clusters with  markersets: " + clusterNames.size)
+        /* Load SNP-typer files */
+        val trnset = tLines(config.trnSet).map(_.split("/")(8))
+        val araFiles = listAraFiles(config.directory).filter(f => trnset.contains(f.getParentFile.getName))
+        println("Trainingset: " + araFiles.size)
+        println
 
-        pw.print(m + "\t")
-        println(m)
-        
-        clusters.map(c => clusterFile(c)).foreach { c =>
-          
-          val samples = tLines(c).filterNot(_.contains("not")).map(_.split("\t")(0))
-          val present =  samples.map(s => markerDetected(m, s)).count(_ == true)
-          //print("\t" + c  + "\t" + present)
-          //println
-          pw.print(present + "\t")
+        val rowhead = "$$" :: clusterNames
+        var matrix = ofDim[Int](markers.size, clusterNames.size) //rowhead :: rows
+
+        def rowIndex(marker: String): Int = {
+          markers.indexOf(marker)
         }
 
-        pw.println
+        def columnIndex(cluster: String): Int = {
+          clusterNames.indexOf(cluster)
+        }
+
+        def readAraFile(file: File): Unit = {
+          val sampleID = file.getParentFile.getName
+          print(sampleID + ", ")
+          val clusters = clusterMap(sampleID)
+          val presentMarkers = tLines(file).dropRight(2).map { line =>
+            line match {
+              case Marker(m, c, p) => new ClusterMarker(m, c, p)
+            }
+          }.filter(_.isPresent)
+          println(presentMarkers.size + " present markers")
+          presentMarkers.foreach { marker =>
+            for (cn <- clusters) {
+              val prevCount = matrix(rowIndex(marker.mutInfo))(columnIndex(cn))
+              matrix(rowIndex(marker.mutInfo))(columnIndex(cn)) = prevCount + 1
+            }
+          }
+        }
+
+        araFiles.foreach { readAraFile(_) }
+
+        def printMatrix(m: Array[Array[Int]]): Unit = {
+          val pw = new PrintWriter(config.output)
+          pw.println(rowhead.mkString("\t"))
+          for (rn <- 0 until markers.size) {
+            pw.print(markers(rn))
+            for (cn <- 0 until clusterNames.size) {
+              pw.print("\t" + m(rn)(cn))
+            }
+            pw.println
+          }
+          pw.close
+        }
+        printMatrix(matrix)
       }
-      pw.close
 
     }
   }
