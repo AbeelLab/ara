@@ -5,6 +5,7 @@ import java.io.PrintWriter
 import scala.io.Source
 import ara.DRsnp._
 import atk.compbio.gff._
+import atk.util.Tool
 
 /**
  *  Read VCF-files of samples mapped against a minimized reference genome,
@@ -12,9 +13,56 @@ import atk.compbio.gff._
  *
  */
 
-object DrugResistanceSnps extends CodonConfig {
+object DrugResistanceSnps extends CodonConfig with Tool {
 
   case class Config(val vcf: File = null, val gff: File = null, val fasta: File = null)
+
+  class DetectedSNP(val region: String, val pos: Int, val ref: String, val alt: String, val filter: String, val ac: String) {
+    val regionArr = region.split("_")
+    val geneNames = regionArr(4)
+    val chrPos = regionArr.last.split("-")(0).toInt + pos - 1
+    val loci = geneNames.split("/")
+
+    override def toString(): String = region + "\t" + chrPos + "\t" + ref + "/" + alt + "\t" + filter
+  }
+
+  object DetectedSNP {
+    /** Only filter SNPs */
+    def unapply(line: String): Option[(String, Int, String, String, String, String)] = {
+      val arr = line.mkString.split("\t")
+      val region = arr(0)
+      val pos = arr(1).toInt
+      val ref = arr(3)
+      val alt = arr(4)
+      val filter = arr(6)
+      val nucleotides = Array[String]("A", "C", "T", "G")
+      if (nucleotides.contains(ref) && nucleotides.contains(alt)) {
+        val info = arr(7).split(";")
+        val bc = info(5)
+        val qp = info(6)
+        val ac = info(11)
+        Some((region, pos, ref, alt, filter, ac))
+      } //if (ac == "AC=1" || ac == "AC=2") Some((region, pos, ref, alt, filter, ac))
+      else None
+    }
+  }
+
+  def isDetectedSNP(str: String): Boolean = str match {
+    case DetectedSNP(g, r, gp, a, f, i) => true
+    case _ => false
+  }
+
+  def complement(seq: String) = {
+    seq.map { c =>
+      c match {
+        case 'A' => 'T'
+        case 'T' => 'A'
+        case 'C' => 'G'
+        case 'G' => 'C'
+        case _ => 'N'
+      }
+    }.mkString
+  }
 
   def main(args: Array[String]) {
 
@@ -24,6 +72,7 @@ object DrugResistanceSnps extends CodonConfig {
       opt[File]("fasta") required () action { (x, c) => c.copy(fasta = x) } text ("Fasta-file")
     }
 
+    /* Load Coll2015 library of drug resistance SNPs */
     val drList = scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/Coll2015DrugResistances.txt")).getLines().filterNot(_.startsWith("#")).filter(_.isSNP).map { line =>
       line match {
         case DRsnp(d, l, lt, cp, r, gp, a, cn, aac) => new DRsnp(d, l, lt, cp, r, gp, a, cn, aac)
@@ -33,7 +82,7 @@ object DrugResistanceSnps extends CodonConfig {
     val associatedDrug = drList.map(d => ((if (d.locus.endsWith("-promoter")) d.locus.dropRight(9) else d.locus) -> d.drug)).groupBy(_._1).mapValues(_.map(_._2).distinct.mkString(","))
     //associatedDrug.foreach(println)
 
-    /** Find gene region of SNP position */
+    /* Find gene region of SNP position */
     def getLocus(cp: Int, lociList: List[(String, GFFLine)], ref: String, alt: String): List[Map[String, Any]] = {
       val loci = lociList.sortBy(_._2.start)
 
@@ -80,66 +129,19 @@ object DrugResistanceSnps extends CodonConfig {
       l.filterNot(_ == null)
     }
 
-    def complement(seq: String) = {
-      seq.map { c =>
-        c match {
-          case 'A' => 'T'
-          case 'T' => 'A'
-          case 'C' => 'G'
-          case 'G' => 'C'
-          case _ => 'N'
-        }
-      }.mkString
-    }
-
-    class DetectedSNP(val region: String, val pos: Int, val ref: String, val alt: String, val filter: String, val ac: String) {
-      val regionArr = region.split("_")
-      val geneNames = regionArr(4)
-      val chrPos = regionArr.last.split("-")(0).toInt + pos - 1
-      val loci = geneNames.split("/")
-
-      override def toString(): String = region + "\t" + chrPos + "\t" + ref + "/" + alt + "\t" + filter
-    }
-
-    object DetectedSNP {
-      /** Only filter SNPs */
-      def unapply(line: String): Option[(String, Int, String, String, String, String)] = {
-        val arr = line.mkString.split("\t")
-        val region = arr(0)
-        val pos = arr(1).toInt
-        val ref = arr(3)
-        val alt = arr(4)
-        val filter = arr(6)
-        val nucleotides = Array[String]("A", "C", "T", "G")
-        if (nucleotides.contains(ref) && nucleotides.contains(alt)) {
-          val info = arr(7).split(";")
-          val bc = info(5)
-          val qp = info(6)
-          val ac = info(11)
-          Some((region, pos, ref, alt, filter, ac))
-        } //if (ac == "AC=1" || ac == "AC=2") Some((region, pos, ref, alt, filter, ac))
-        else None
-      }
-    }
-
-    def isDetectedSNP(str: String): Boolean = str match {
-      case DetectedSNP(g, r, gp, a, f, i) => true
-      case _ => false
-    }
-
     parser.parse(args, Config()) map { config =>
 
       val gff = GFFFile(config.gff).filterNot(_.kind.equals("CDS")).filterNot(_.kind.equals("source")).filterNot(_.line.split("\t")(8).startsWith("note="))
       val gffGenes = gff.map(g => (g.attributes("locus_tag").split(""""""")(1) -> g)).toMap
 
-      val ref = Source.fromFile(config.fasta).getLines.filterNot(_.startsWith(">")).mkString
+      val ref = tLines(config.fasta).filterNot(_.startsWith(">")).mkString
 
-      val snps = Source.fromFile(config.vcf).getLines.filterNot(_.startsWith("#")).filter(isDetectedSNP(_)).map(line => line match {
+      val snps = tLines(config.vcf).filter(isDetectedSNP(_)).map(line => line match {
         case DetectedSNP(g, p, r, a, f, ac) => new DetectedSNP(g, p, r, a, f, ac)
       })
 
       println("#Detected mutations ")
-      println("#Drug\tLocus\tChromosome Coordinate\tGene Coordinate\tNucleotide Change\tCodon Number\tCodon Change\tAmino Acid Change\tKnown info")
+      println("#Drug\tLocus\tChromosome coordinate\tGene coordinate\tNucleotide change\tCodon number\tCodon change\tAmino acid change\tKnown info")
       snps.foreach { snp =>
         //println(snp)
         val loci = snp.loci.map { locus => (locus, gffGenes(locusTag(locus))) }.toList

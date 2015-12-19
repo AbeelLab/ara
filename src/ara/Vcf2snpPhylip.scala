@@ -12,8 +12,7 @@ import atk.util.Tool
  * It does not remove samples with duplicate names.
  */
 object Vcf2snpPhylip extends Tool {
-  val usage = "java -jar ara.jar vcf2snp-phylip [pathfile] [output.phy]"
-
+  
   case class Config(val vcfPathFile: File = null, val output: String = null)
 
   def main(args: Array[String]) {
@@ -68,11 +67,11 @@ object Vcf2snpPhylip extends Tool {
           refMap.keysIterator.toList.sorted.foreach(pos => p.print(refMap(pos)))
           vcfList.foreach { file => // for each file print sequence
             val name = file.getParentFile.getName
-            val snpMap = Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(_.invalidSite).filter(_.isSNP).map(_ match {
+            val snpMap = tLines(file).filterNot(_.invalidSite).filter(_.isSNP).map(_ match {
               case SNP(r, c, a) => (c, a)
             }).toMap
-            val nonSnpSet = (Source.fromFile(file).getLines.filterNot(_.startsWith("#")).filterNot(_.invalidSite).filter(_.isSNP).filter(line =>
-              refMap.contains(line.split("\t")(1).toInt)).map(line => line.split("\t")(1).toInt)).toSet
+            val nonSnpSet = tLines(file).filterNot(_.invalidSite).filter(_.isSNP).filter(line =>
+              refMap.contains(line.split("\t")(1).toInt)).map(line => line.split("\t")(1).toInt).toSet
             val snpSeq = refMap.keysIterator.toList.sorted.map(pos =>
               if (snpMap.contains(pos)) snpMap(pos)
               else if (nonSnpSet.contains(pos)) "N"
