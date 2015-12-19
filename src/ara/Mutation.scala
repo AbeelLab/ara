@@ -31,6 +31,7 @@ object Mutation {
       if (arr(4) == "." && arr(6) == "PASS") true
       else false
     }
+    
   }
   implicit def seqtoBool(s: String) = new Line(s)
 
