@@ -131,11 +131,14 @@ object DrugResistanceSnps extends CodonConfig with Tool {
 
     parser.parse(args, Config()) map { config =>
 
+      /* Prepare GFF map */
       val gff = GFFFile(config.gff).filterNot(_.kind.equals("CDS")).filterNot(_.kind.equals("source")).filterNot(_.line.split("\t")(8).startsWith("note="))
       val gffGenes = gff.map(g => (g.attributes("locus_tag").split(""""""")(1) -> g)).toMap
 
+      /* Load full reference genome fasta file */
       val ref = tLines(config.fasta).filterNot(_.startsWith(">")).mkString
 
+      /* Read VCF file and filter SNPs */
       val snps = tLines(config.vcf).filter(isDetectedSNP(_)).map(line => line match {
         case DetectedSNP(g, p, r, a, f, ac) => new DetectedSNP(g, p, r, a, f, ac)
       })
