@@ -23,6 +23,7 @@ object Console {
         case "hier-clusters" => HierClusters.main(args.drop(1))
         case "bj-markers" => BlueJayMarkers.main(args.drop(1))
         case "ref-DR-region" => DRMap.main(args.drop(1))
+        case "dr-snps" => DrugResistanceSnps.main(args.drop(1))
         case "prepare-ara" => PrepareAra.main(args.drop(1))
         case "prepare-drmapping" => PrepareDRMapping.main(args.drop(1))
         case "prepare-bluejay" => PrepareBlueJay.main(args.drop(1))
@@ -50,6 +51,7 @@ object Console {
       println("\tbj-markers\t\tConvert cluster associated SNPs from BlueJay tsv-files to 21 bp markers, given a reference genome.")
       println("\tall-bj-markers\t\tCombine multiple marker files into one.")
       println("\tref-DR-region\t\tCreate minimized version of reference genome containing known DR-regions.")
+      println("\tdr-snps\t\tRead drug resistance region VCF file.")
       println
       println("\tprepare-ara\t\tPrepare sbatch scripts to run Ara.")
       println("\tprepare-drmapping\tPrepare slurm script for each sample to detect drug resistance.")
