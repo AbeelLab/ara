@@ -62,8 +62,17 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
         }.flatten.groupBy(_._1).mapValues(_.map(_._2))
         println("Clusters with  markersets: " + clusterNames.size)
         /* Load SNP-typer files */
-        val trnset = tLines(config.trnSet).map(_.split("/")(8))
-        val araFiles = listAraFiles(config.directory).filter(f => trnset.contains(f.getParentFile.getName))
+        val araFiles = listAraFiles(config.directory).map{f => 
+          val study = f.getParentFile.getParentFile.getName
+          val sampleID = f.getParentFile.getName 
+          (study, sampleID) -> f
+        }.toMap//.filter(f => trnset.contains(f.getParentFile.getName))
+        val trnset = tLines(config.trnSet).map{path => 
+          val arr = path.split("/")
+          val study = arr(7)
+          val sampleID = arr(8)
+          (study, sampleID)
+        }.filter(araFiles.keysIterator.toList.contains(_)).map(araFiles(_))
         println("Trainingset: " + araFiles.size)
         println
 
@@ -97,7 +106,7 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
           }
         }
 
-        araFiles.foreach { readAraFile(_) }
+        trnset.foreach { readAraFile(_) }
 
         def printMatrix(m: Array[Array[Int]]): Unit = {
           val pw = new PrintWriter(config.output)
