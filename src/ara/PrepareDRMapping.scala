@@ -18,24 +18,38 @@ object PrepareDRMapping {
 
     parser.parse(args, Config()) map { config =>
 
-      def listReducedVCF(f: Any): List[File] = f match {
+      /*def listReducedVCF(f: Any): List[File] = f match {
         case f: File if (f.isDirectory()) => f.listFiles().toList.flatMap(listReducedVCF(_))
         case f: File if (f.isFile() && f.getName.equals("reduced.vcf")) => List(f)
         case _ => Nil
-      }
+      }*/
 
+      def listDRVCF(f: Any): List[File] = f match {
+        case f: File if (f.isDirectory()) => f.listFiles().toList.flatMap(listDRVCF(_))
+        case f: File if (f.isFile() && f.getName.equals("pilon.dr-region.vcf")) => List(f)
+        case _ => Nil
+      }
+      
       val dir = config.directory
-      val mainpw = new PrintWriter(new File(dir.getPath + "/dr-region-TU.sh"))
+      val mainpw = new PrintWriter(new File(dir.getPath + "/dr-region-TU2.sh"))
       mainpw.println("#!/bin/bash")
+        mainpw.println("#SBATCH --job-name=readDRvcf")
+        mainpw.println("#SBATCH --workdir=" + dir.getPath)
+        mainpw.println("#SBATCH --partition=long --qos=long")
+        mainpw.println("#SBATCH --mem=10000")
+        mainpw.println("#SBATCH --output=dr-region-TU2.out")
+        mainpw.println
       mainpw.println
             
-      val samples = if (config.samplesToSkip != null) listReducedVCF(dir).filterNot(s => Source.fromFile(config.samplesToSkip).getLines.contains(s.getParentFile.getName)) else listReducedVCF(dir)
+      val samples = if (config.samplesToSkip != null) listDRVCF(dir).filterNot(s => Source.fromFile(config.samplesToSkip).getLines.contains(s.getParentFile.getName)) else listDRVCF(dir)
       var count = 0
-      samples.foreach { rvcf =>
+      samples.foreach { drvcf =>
         count = count + 1
-        val sample = rvcf.getParentFile
-        val bamfiles = sample.list().filter(_.endsWith(".sorted.bam"))
-        val cmd = Source.fromFile(rvcf).getLines.toList(3).dropRight(1).split(" ").drop(8).grouped(2).toList.map{b => 
+        val sample = drvcf.getParentFile        
+        mainpw.println("java -jar /tudelft.net/staff-bulk/ewi/insy/DBL/Arlin/ara-development/ara.jar dr-snps --vcf " + drvcf + " --fasta ../team/arlin/MT_H37RV_BRD_V5.ref.fasta -- gff ../team/arlin/MT_H37RV_BRD_V5.ref.gff -o " + sample.getName)
+        if (count % 100 == 0) mainpw.println("sleep 10s")
+        /*val bamfiles = sample.list().filter(_.endsWith(".sorted.bam"))
+        val cmd = Source.fromFile(drvcf).getLines.toList(3).dropRight(1).split(" ").drop(8).grouped(2).toList.map{b => 
           val bam = b(1).split("/").last
           b(0) + " " + bam.dropRight(11) + ".dr-region" + bam.takeRight(11)
         }.mkString(" ")
@@ -63,12 +77,13 @@ object PrepareDRMapping {
         pw.println
         pw.println("# Call variants")
         pw.println("java -Xmx4g -jar ../../../bin/pilon-1.11.jar --output pilon.dr-region --vcf --changes --fix all,breaks --genome /tudelft.net/staff-bulk/ewi/insy/tbarc/team/arlin/MT_H37RV_BRD_V5.ref.dr-region.fasta/MT_H37RV_BRD_V5.ref.dr-region.fasta " + cmd)
-        pw.close
+        pw.close*/
+                
       }
 
       mainpw.close
       
-      println("Finished preparing SLURM scripts for " + dir)
+      println("Finished preparing SLURM script for " + dir)
       
     }
 
