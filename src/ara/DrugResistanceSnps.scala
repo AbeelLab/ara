@@ -16,7 +16,7 @@ import ara.DRVcfLine._
 
 object DrugResistanceSnps extends CodonConfig with Tool {
 
-  case class Config(val vcf: File = null, val gff: File = null, val fasta: File = null)
+  case class Config(val vcf: File = null, val gff: File = null, val fasta: File = null, val output: String = null)
 
   def complement(seq: String) = {
     seq.map { c =>
@@ -36,6 +36,7 @@ object DrugResistanceSnps extends CodonConfig with Tool {
       opt[File]("vcf") required () action { (x, c) => c.copy(vcf = x) } text ("VCF-file")
       opt[File]("gff") required () action { (x, c) => c.copy(gff = x) } text ("GFF-file")
       opt[File]("fasta") required () action { (x, c) => c.copy(fasta = x) } text ("Fasta-file")
+      opt[String]('o', "output") required () action { (x, c) => c.copy(output = x + ".dr-snps.txt") } text ("Output name.")
     }
 
     /* Load Coll2015 library of drug resistance SNPs */
@@ -46,7 +47,6 @@ object DrugResistanceSnps extends CodonConfig with Tool {
     }.toList
     val locusTag = drList.map(d => ((if (d.locus.endsWith("-promoter")) d.locus.dropRight(9) else d.locus) -> d.locusTag)).toMap
     val associatedDrug = drList.map(d => ((if (d.locus.endsWith("-promoter")) d.locus.dropRight(9) else d.locus) -> d.drug)).groupBy(_._1).mapValues(_.map(_._2).distinct.mkString(","))
-    //associatedDrug.foreach(println)
 
     /* Find gene region of SNP position */
     def getLocus(cp: Int, lociList: List[(String, GFFLine)], ref: String, alt: String): List[Map[String, Any]] = {
@@ -95,9 +95,6 @@ object DrugResistanceSnps extends CodonConfig with Tool {
       l.filterNot(_ == null)
     }
 
-    /*def getInfo(snp: DRVcfLine): Map[String, Any] = {
-      
-    }*/
     
     parser.parse(args, Config()) map { config =>
 
@@ -109,31 +106,22 @@ object DrugResistanceSnps extends CodonConfig with Tool {
       val ref = tLines(config.fasta).filterNot(_.startsWith(">")).mkString
 
       /* Read VCF file and filter SNPs */
-      val snps = tLines(config.vcf).map(DRVcfLine(_)).filter(_.isSNP())//tLines(config.vcf).filter(isDetectedSNP(_)).map(line => line match {
-        //case DetectedSNP(g, p, r, a, f, ac) => new DetectedSNP(g, p, r, a, f, ac)
-      //})
-      println("SNPs: " + snps.size)      
+      val snps = tLines(config.vcf).map(DRVcfLine(_)).filter(_.isSNP())
       val ambSnps = snps.filter(_.ambiguous)
-      println("Ambiguous SNPs: " + ambSnps.size)
-      
-      println("#Detected mutations ")
-      println("#Drug\tLocus\tChromosome coordinate\tGene coordinate\tNucleotide change\tCodon number\tCodon change\tAmino acid change\tKnown info\tFilter\tBC")
-      val ambSnpInfo = ambSnps.map { snp =>
-        //println(snp)
+            
+      val snpInfo = snps.map { snp =>
         val loci = snp.loci.map { locus => (locus, gffGenes(locusTag(locus))) }.toList
-        //loci.foreach(println)        
         val locus = getLocus(snp.chrPos, loci, snp.ref, snp.alt)
         val snpInfoPerLocus = locus.map { l =>
           val (codonNumber, codonChange, aminoAcidChange, knownInfo) = { //codonChange on forward strand
             val locusName = l("locus").asInstanceOf[String]
             if (locusName.endsWith("-tail") || locusName.endsWith("-promoter") || locusName.equals("rrl") || locusName.equals("rrs")) {
               val knownChrPos = drList.filter(_.cp.equals(snp.chrPos))
-              //println(knownChrPos)
               val knownSnp = if (knownChrPos.isEmpty) "Unknown mutation"
               else {
                 val knownNchange = knownChrPos.filter(s => s.r.equals(snp.ref) && s.a.equals(snp.alt))
                 if (knownNchange.isEmpty) "Known nucleotide coordinate"
-                else "Known mutation" // + " :" +  knownNchange.mkString
+                else "Known mutation" 
               }
               ("-", "-", "-", knownSnp)
             } else {
@@ -149,23 +137,33 @@ object DrugResistanceSnps extends CodonConfig with Tool {
               val ac = cc.split("/").map(codonMap(_)).mkString("/")
               val knownCodon = {
                 val knownCodonNumber = drList.filter(s => s.locus.equals(l("locus")) && s.gp == gc)
-                //println(knownCodonNumber)
                 if (knownCodonNumber.isEmpty) "Unknown mutation"
                 else {
                   val knownAac = knownCodonNumber.filter(_.aaChange.equals(ac))
                   if (knownAac.isEmpty) "Known amino acid coordinate."
-                  else "Known mutation" // + " :" +  knownAac.mkString
+                  else "Known mutation" 
                 }
               }
               (cn, cc, ac, knownCodon)
             }
           }
-          //println(l("drug") + "\t" + l("locus") + "\t" + snp.chrPos + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + codonNumber + "\t" + codonChange + "\t" + aminoAcidChange + "\t" + knownInfo)
-          (Map("drug" -> l("drug"), "locus" -> l("locus"), "chrPos" -> snp.chrPos, "gene-coordinate" -> l("gene-coordinate"), "nucleotide-change" -> l("nucleotide-change"), "codon-number" -> codonNumber, "codon-change" -> codonChange, "aa-change" -> aminoAcidChange, "known-info" -> knownInfo))
+          (Map("drug" -> l("drug"), "locus" -> l("locus"), "chrPos" -> snp.chrPos, "gene-coordinate" -> l("gene-coordinate"), "nucleotide-change" -> l("nucleotide-change"), "codon-number" -> codonNumber, "codon-change" -> codonChange, "aa-change" -> aminoAcidChange, "known-info" -> knownInfo, "filter" -> snp.filter, "bc" -> snp.bc))
         }
-        snpInfoPerLocus.foreach(l => println(l("drug") + "\t" + l("locus") + "\t" + l("chrPos") + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + l("codon-number") + "\t" + l("codon-change") + "\t" + l("aa-change") + "\t" + l("known-info") + "\t" + snp.filter + "\t" + snp.bc))
         snpInfoPerLocus
       }.flatten
+      
+      val knownMutations = snpInfo.filter(m => m("known-info") == "Known mutation")
+      
+      val pw = new PrintWriter(config.output)
+      pw.println("# SNPs: " + snps.size) 
+      pw.println("# Known SNPs: " + knownMutations.size)
+      pw.println("# Ambiguous SNPs: " + knownMutations.filter(m => m("filter") == "Amb").size)
+      pw.println("#")
+      
+      pw.println("# Known mutations in drug resistance regions")
+      pw.println("# Drug\tLocus\tChromosome coordinate\tGene coordinate\tNucleotide change\tCodon number\tCodon change\tAmino acid change\tKnown info\tFilter\tBC")      
+      knownMutations.foreach(l => pw.println(l("drug") + "\t" + l("locus") + "\t" + l("chrPos") + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + l("codon-number") + "\t" + l("codon-change") + "\t" + l("aa-change") + "\t" + l("known-info") + "\t" + l("filter") + "\t" + l("bc")))
+      pw.close
       
     }
 
