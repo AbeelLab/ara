@@ -147,22 +147,23 @@ object DrugResistanceSnps extends CodonConfig with Tool {
               (cn, cc, ac, knownCodon)
             }
           }
-          (Map("drug" -> l("drug"), "locus" -> l("locus"), "chrPos" -> snp.chrPos, "gene-coordinate" -> l("gene-coordinate"), "nucleotide-change" -> l("nucleotide-change"), "codon-number" -> codonNumber, "codon-change" -> codonChange, "aa-change" -> aminoAcidChange, "known-info" -> knownInfo, "filter" -> snp.filter, "bc" -> snp.bc))
+          (Map("drug" -> l("drug"), "locus" -> l("locus"), "chrPos" -> snp.chrPos, "gene-coordinate" -> l("gene-coordinate"), "nucleotide-change" -> l("nucleotide-change"), "codon-number" -> codonNumber, "codon-change" -> codonChange, "aa-change" -> aminoAcidChange, "mut-info" -> knownInfo, "filter" -> snp.filter, "bc" -> snp.bc))
         }
         snpInfoPerLocus
       }.flatten
       
-      val knownMutations = snpInfo.filter(m => m("known-info") == "Known mutation")
+      val knownMutations = snpInfo.filter(m => m("mut-info") == "Known mutation")
       
       val pw = new PrintWriter(config.output)
       pw.println("# SNPs: " + snps.size) 
       pw.println("# Known SNPs: " + knownMutations.size)
       pw.println("# Ambiguous SNPs: " + knownMutations.filter(m => m("filter") == "Amb").size)
-      pw.println("#")
-      
+      pw.println("#")      
       pw.println("# Known mutations in drug resistance regions")
-      pw.println("# Drug\tLocus\tChromosome coordinate\tGene coordinate\tNucleotide change\tCodon number\tCodon change\tAmino acid change\tKnown info\tFilter\tBC")      
-      knownMutations.foreach(l => pw.println(l("drug") + "\t" + l("locus") + "\t" + l("chrPos") + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + l("codon-number") + "\t" + l("codon-change") + "\t" + l("aa-change") + "\t" + l("known-info") + "\t" + l("filter") + "\t" + l("bc")))
+      pw.println("# Drug\tLocus\tChromosome coordinate\tGene coordinate\tNucleotide change\tCodon number\tCodon change\tAmino acid change\tMutation info\tFilter\tBC")      
+      knownMutations.foreach{l => 
+        pw.println(l("drug") + "\t" + l("locus") + "\t" + l("chrPos") + "\t" + l("gene-coordinate") + "\t" + l("nucleotide-change") + "\t" + l("codon-number") + "\t" + l("codon-change") + "\t" + l("aa-change") + "\t" + l("mut-info") + "\t" + l("filter") + "\t" + l("bc"))
+      }
       pw.close
       
     }

@@ -18,11 +18,10 @@ object PrepareDRMapping {
 
     parser.parse(args, Config()) map { config =>
 
-      def listFiles(f: Any): List[File] = f match {
-        case f: File if (f.isDirectory()) => f.listFiles().toList.flatMap(listFiles(_))
+      def listReducedVCF(f: Any): List[File] = f match {
+        case f: File if (f.isDirectory()) => f.listFiles().toList.flatMap(listReducedVCF(_))
         case f: File if (f.isFile() && f.getName.equals("reduced.vcf")) => List(f)
         case _ => Nil
-
       }
 
       val dir = config.directory
@@ -30,7 +29,7 @@ object PrepareDRMapping {
       mainpw.println("#!/bin/bash")
       mainpw.println
             
-      val samples = if (config.samplesToSkip != null) listFiles(dir).filterNot(s => Source.fromFile(config.samplesToSkip).getLines.contains(s.getParentFile.getName)) else listFiles(dir)
+      val samples = if (config.samplesToSkip != null) listReducedVCF(dir).filterNot(s => Source.fromFile(config.samplesToSkip).getLines.contains(s.getParentFile.getName)) else listReducedVCF(dir)
       var count = 0
       samples.foreach { rvcf =>
         count = count + 1
