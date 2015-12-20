@@ -67,8 +67,9 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
         println("Trainingset: " + araFiles.size)
         println
 
+        /* Prepare matrix */
         val rowhead = "$$" :: clusterNames
-        var matrix = ofDim[Int](markers.size, clusterNames.size) //rowhead :: rows
+        var matrix = ofDim[Int](markers.size, clusterNames.size)
 
         def rowIndex(marker: String): Int = {
           markers.indexOf(marker)
