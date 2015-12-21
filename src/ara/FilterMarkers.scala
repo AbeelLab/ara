@@ -32,6 +32,11 @@ object FilterMarkers extends Tool {
       /* Read markers from first column */
       val markers = matrix.drop(1).map(_.split("\t")(0))
       println("Markers: " + markers.size)
+      val uniqueMutation = markers.map{m => 
+        val arr = m.split("_")
+        (arr(0), arr(2)) //mutation, cluster
+      }.groupBy(_._1).mapValues(_.map(_._2))
+      
 
       /* Read clusters from matrix header */
       val clusterNames = matrix.head.split("\t").drop(1).toList
@@ -79,10 +84,19 @@ object FilterMarkers extends Tool {
         ls.sorted
       }
 
+      def ancestorsWithMarker(marker: String): List[String] = {
+        val arr = marker.split("_")
+        val cluster = arr(2)
+        val parents = ancestors(cluster)
+        val mut = arr(0)
+        val clustersWithMut = uniqueMutation(mut)
+        clustersWithMut.intersect(parents)
+      }
+      
       def presentInUnrelatedCluster(marker: String): Boolean = {
         val rn = rowIndex(marker)
         val cluster = marker.split("_")(2)
-        val related = ancestors(cluster) ++ descendants(cluster)
+        val related = (cluster :: ancestors(cluster) ++ descendants(cluster) ++ ancestorsWithMarker(marker).flatMap(descendants(_))).distinct
         val unrelated = clusterNames.filterNot { c => related.contains(c) }
         val count = unrelated.map{c =>
           val cn = columnIndex(c)
@@ -91,6 +105,11 @@ object FilterMarkers extends Tool {
         count > 0        
       }
 
+      //println(ancestorsWithMarker("G2216378C_presence_L1.2"))
+      //println(ancestorsWithMarker("C2216971G_presence_L2.2.2.2.2.1"))
+      //println(presentInUnrelatedCluster("G2216378C_presence_L1.2"))
+      //println(presentInUnrelatedCluster("C2216971G_presence_L2.2.2.2.2.1"))
+      
       var countA = 0
       var countB = 0
       
@@ -113,9 +132,12 @@ object FilterMarkers extends Tool {
       pw.println("## Command: " + args.mkString(" "))
       pw.println("## Date: " + Calendar.getInstance.getTime)
       pw.println("#")
-      filteredMarkers.sortBy{m => m.split("_")(0).drop(1).dropRight(1).toInt}.foreach{m => pw.println(">" + m + "/n" + markerSeq(m))}
+      filteredMarkers.sortBy{m => m.split("_")(0).drop(1).dropRight(1).toInt}.foreach{m => pw.println(">" + m + "\n" + markerSeq(m))}
       pw.close
 
+      val clustersWithMarkers = filteredMarkers.groupBy(m => m.split("_")(2)).mapValues(_.size).toList.sortBy(_._1)
+      println("Clusters without markers left: " + clustersWithMarkers.filter(_._2 == 0))
+      
     }
 
   }
