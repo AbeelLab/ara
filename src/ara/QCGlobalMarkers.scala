@@ -73,7 +73,7 @@ object QCGlobalMarkers extends MTBCclusters with Tool {
           val sampleID = arr(8)
           (study, sampleID)
         }.filter(araFiles.keysIterator.toList.contains(_)).map(araFiles(_))
-        println("Trainingset: " + araFiles.size)
+        println("Trainingset: " + trnset.size)
         println
 
         /* Prepare matrix */
