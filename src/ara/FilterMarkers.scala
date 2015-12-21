@@ -102,13 +102,8 @@ object FilterMarkers extends Tool {
           val cn = columnIndex(c)
           matrixValues(rn)(cn)
         }.foldLeft(0)(_ + _)
-        count > 0        
+        count > 10        
       }
-
-      //println(ancestorsWithMarker("G2216378C_presence_L1.2"))
-      //println(ancestorsWithMarker("C2216971G_presence_L2.2.2.2.2.1"))
-      //println(presentInUnrelatedCluster("G2216378C_presence_L1.2"))
-      //println(presentInUnrelatedCluster("C2216971G_presence_L2.2.2.2.2.1"))
       
       var countA = 0
       var countB = 0
