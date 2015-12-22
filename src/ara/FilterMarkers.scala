@@ -102,24 +102,24 @@ object FilterMarkers extends Tool {
           val cn = columnIndex(c)
           matrixValues(rn)(cn)
         }.foldLeft(0)(_ + _)
-        count > 10        
+        count > 20        
       }
       
       var countA = 0
-      var countB = 0
+      //var countB = 0
       
       val filteredMarkers = markers.filter{m => 
         val rn = rowIndex(m)
         if (rn % 1000 == 0 && rn != 0) println(rn + " markers checked..")
         val a = presentInCluster(m) 
-        val b = !presentInUnrelatedCluster(m)     
+        //val b = !presentInUnrelatedCluster(m)     
         if (a) countA = countA + 1
-        if (b) countB = countB + 1
-        a && b
+        //if (b) countB = countB + 1
+        a// && b
       }
       
       println("Markers detected in specific cluster: " + countA)
-      println("Markers not detected in unrelated clusters: " + countB)
+      //println("Markers not detected in unrelated clusters: " + countB)
       println("Filtered markers: " + filteredMarkers.size)
       
       val pw = new PrintWriter(config.output)
@@ -130,9 +130,6 @@ object FilterMarkers extends Tool {
       filteredMarkers.sortBy{m => m.split("_")(0).drop(1).dropRight(1).toInt}.foreach{m => pw.println(">" + m + "\n" + markerSeq(m))}
       pw.close
 
-      val clustersWithMarkers = filteredMarkers.groupBy(m => m.split("_")(2)).mapValues(_.size).toList.sortBy(_._1)
-      println("Clusters without markers left: " + clustersWithMarkers.filter(_._2 == 0))
-      
     }
 
   }
