@@ -7,7 +7,6 @@ import ara.DRsnp._
 import atk.compbio.gff._
 import atk.util.Tool
 import ara.DRVcfLine._
-
 /**
  *  Read VCF-files of samples mapped against a minimized reference genome,
  *  consisting of only drug resistance regions.
