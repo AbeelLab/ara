@@ -154,6 +154,7 @@
 
     	  		<include name="hierclusters_global_*" />
     	   		<include name="Coll2015DrugResistances.txt" />
+    			<include name="global_markers_filtered.txt" />
     		    						
     	  	</fileset>
     				
