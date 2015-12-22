@@ -7,6 +7,10 @@ import ara.DRsnp._
 import atk.compbio.gff._
 import atk.util.Tool
 import ara.DRVcfLine._
+import java.nio.charset.Charset
+import java.nio.charset.CodingErrorAction
+import scala.io.Codec
+
 /**
  *  Read VCF-files of samples mapped against a minimized reference genome,
  *  consisting of only drug resistance regions.
@@ -29,7 +33,9 @@ object DrugResistanceSnps extends CodonConfig with Tool {
     }.mkString
   }
 
-  def main(args: Array[String]) {
+  val decoder = Codec.UTF8.decoder.onMalformedInput(CodingErrorAction.IGNORE)
+  
+  def main(args: Array[String]){
 
     val parser = new scopt.OptionParser[Config]("java -jar ara.jar dr-snps") {
       opt[File]("vcf") required () action { (x, c) => c.copy(vcf = x) } text ("VCF-file")
@@ -39,7 +45,7 @@ object DrugResistanceSnps extends CodonConfig with Tool {
     }
 
     /* Load Coll2015 library of drug resistance SNPs */
-    val drList = scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/Coll2015DrugResistances.txt")).getLines().filterNot(_.startsWith("#")).filter(_.isSNP).map { line =>
+    val drList = scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/Coll2015DrugResistances.txt"))(decoder).getLines().filterNot(_.startsWith("#")).filter(_.isSNP).map { line =>
       line match {
         case DRsnp(d, l, lt, cp, r, gp, a, cn, aac) => new DRsnp(d, l, lt, cp, r, gp, a, cn, aac)
       }
