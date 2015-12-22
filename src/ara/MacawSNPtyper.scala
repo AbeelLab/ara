@@ -64,7 +64,7 @@ object MacawSNPtyper extends Tool {
     }
     parser.parse(args, Config()) map { config =>
       /* Load spacers */
-      val lines = if (config.markerFile != null) tLines(config.markerFile).toList else scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/hierclusters_global_bluejaymarkers")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
+      val lines = if (config.markerFile != null) tLines(config.markerFile).toList else scala.io.Source.fromInputStream(MacawSNPtyper.getClass().getResourceAsStream("/global_markers_filtered.txt")).getLines().filterNot(f => f.startsWith("#") || f.trim.size == 0).toList
       val pw = if (config.outputFile != null) new PrintWriter(config.outputFile + ".ara") else new PrintWriter(System.out)
 
       pw.println(generatorInfo)
