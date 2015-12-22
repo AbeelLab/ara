@@ -36,7 +36,7 @@ object Console {
     def listInstructions() {
       println("Usage: java -jar ara.jar [instruction] [instruction options...]")
       println("Instructions:")
-      println("\tSNP-typer\t\tDetect presence/absence of SNP markers to detect mixed infection/drug resistance.")
+      println("\tsnp-typer\t\tDetect presence/absence of SNP markers to detect mixed infection/drug resistance.")
       println("\tinterpret-macaw\t\tInterpret MTBC hierarchy clusters from SNP-typer results.")
       println("\tlist-results\t\tList all ara results in a data directory.")
       //println("\tinterpret-DR\t\tInterpret drug resistances from SNP-typer results.")
