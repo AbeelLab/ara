@@ -112,7 +112,6 @@ object DrugResistanceSnps extends CodonConfig with Tool {
 
       /* Read VCF file and filter SNPs */
       val snps = tLines(config.vcf).map(DRVcfLine(_)).filter(_.isSNP())
-      val ambSnps = snps.filter(_.ambiguous)
             
       val snpInfo = snps.map { snp =>
         val loci = snp.loci.map { locus => (locus, gffGenes(locusTag(locus))) }.toList
@@ -162,7 +161,7 @@ object DrugResistanceSnps extends CodonConfig with Tool {
       val pw = new PrintWriter(config.output)
       pw.println("# SNPs: " + snps.size) 
       pw.println("# Known SNPs: " + knownMutations.size)
-      pw.println("# Ambiguous SNPs: " + knownMutations.filter(m => m("filter") == "Amb").size)
+      pw.println("# Ambiguous known SNPs: " + knownMutations.filter(m => m("filter") == "Amb").size)
       pw.println("#")      
       pw.println("# Known mutations in drug resistance regions")
       pw.println("# Drug\tLocus\tChromosome coordinate\tGene coordinate\tNucleotide change\tCodon number\tCodon change\tAmino acid change\tMutation info\tFilter\tBC")      
