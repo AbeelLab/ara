@@ -4,9 +4,9 @@
 	<classpathentry kind="src" path="resources"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
-	<classpathentry kind="lib" path="C:/Users/Arlin/.ivy2/cache/com.github.scopt/scopt_2.11/jars/scopt_2.11-3.3.0.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Arlin/Desktop/macaw-1.0.0-rc1/macaw-1/jannot-43.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Arlin/Desktop/macaw-1.0.0-rc1/macaw-1/sam-1.105.jar"/>
-	<classpathentry kind="lib" path="/Peacock/lib/atk-84.jar"/>
+	<classpathentry kind="lib" path="lib/ajt-3.jar"/>
+	<classpathentry kind="lib" path="lib/atk-84.jar"/>
+	<classpathentry kind="lib" path="lib/jannot-43.jar"/>
+	<classpathentry kind="lib" path="lib/sam-1.105.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
