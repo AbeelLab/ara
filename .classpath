@@ -5,8 +5,8 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.scala-ide.sdt.launching.SCALA_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/ajt-3.jar"/>
-	<classpathentry kind="lib" path="lib/atk-84.jar"/>
 	<classpathentry kind="lib" path="lib/jannot-43.jar"/>
 	<classpathentry kind="lib" path="lib/sam-1.105.jar"/>
+	<classpathentry kind="lib" path="lib/atk-90.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
