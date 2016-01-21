@@ -27,6 +27,7 @@ object Console {
         case "prepare-ara" => PrepareAra.main(args.drop(1))
         case "prepare-drmapping" => PrepareDRMapping.main(args.drop(1))
         case "prepare-bluejay" => PrepareBlueJay.main(args.drop(1))
+        case "generate-validation" => Validation.main(args.drop(1))
         case _ => listInstructions 
       }
     }

@@ -36,7 +36,7 @@ object MacawSNPtyper extends Tool {
     2015/01/16:    Initial release
     2015/03/03:    Changed output logic to only output a single marker type for all files by default
 		  		   Added option to revert to the old behavior
-    
+    2016/01/11:    Removed assertion in output, replaced with warning
     """
 
   def revcomp(read: Array[Byte]) = {
@@ -58,7 +58,7 @@ object MacawSNPtyper extends Tool {
       opt[String]("marker") action { (x, c) => c.copy(markerFile = x) } text ("File containing marker sequences. This file has to be a multi-fasta file with the headers indicating the name of the markers.") //, { v: String => config.spacerFile = v })
       opt[String]('o', "output") action { (x, c) => c.copy(outputFile = x) } text ("File where you want the output to be written")
       opt[Int]('t', "threshold") action { (x, c) => c.copy(threshold = x) } text ("Threshold to determine absence or presence of a marker (default=5)")
-      opt[Unit]("detailed") action { (_, c) => c.copy(detailed = true) } text ("Output digital marker types per input file. (default=false) ")      
+      opt[Unit]("detailed") action { (_, c) => c.copy(detailed = true) } text ("Output digital marker types per input file. (default=false) ")
       arg[File]("<file>...") unbounded () required () action { (x, c) => c.copy(files = c.files :+ x) } text ("input files")
 
     }
@@ -164,16 +164,20 @@ object MacawSNPtyper extends Tool {
     println("KS: " + cm.keySet())
     for (gs <- groupedSpacers.filterNot(_._1.contains("repeat")).toList.sortBy(_._1)) {
       idx += 1
-      assert(gs._2.size == 2)
+      //      assert(gs._2.size == 2)
+      if (gs._2.size != 2){
+    	  pw.println("## WARNING: FAILED ASSERTION. TREAT NEXT LINE OF OUTPUT WITH CARE!")
+    	  pw.println("## DEBUG GGS: " + gs)
+      }
       println("GGS: " + gs)
       val z1 = (gs._2.map(p => cm.get(p._1).toInt)).toList
       val z = z1.sum
 
-      
       pw.println(gs._1 + "\t" + z + "\t" + nf.format(if (z >= config.threshold) 0 else 1) + "\t" + (if (z >= config.threshold) "present" else "absent"))
       buffer.append(if (z >= config.threshold) "1" else "0")
       if (buffer.length() % 11 == 10)
         buffer.append(" ")
+      pw.flush()
 
     }
     pw.println("## Digital markertype: \n" + buffer.toString().grouped(10).mkString(" "))
