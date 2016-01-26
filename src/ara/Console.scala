@@ -1,5 +1,7 @@
 package ara
 
+import UniqueMarkers.uniqueMarkers
+
 object Console {
   
   def main(args: Array[String]) ={
@@ -25,6 +27,7 @@ object Console {
         case "prepare-ara" => PrepareAra.main(args.drop(1))
         case "prepare-drmapping" => PrepareDRMapping.main(args.drop(1))
         case "prepare-bluejay" => PrepareBlueJay.main(args.drop(1))
+        case "unique-markers" => uniqueMarkers.main(args.drop(1))
         case _ => listInstructions 
       }
     }
@@ -52,6 +55,7 @@ object Console {
       println("\tprepare-ara\t\tPrepare sbatch scripts to run Ara.")
       println("\tprepare-drmapping\tPrepare slurm script for each sample to detect drug resistance.")
       println("\tprepare-bluejay\t\tPrepare slurm script for hierarchical clusters for SNP-association.")
+      println("\tunique-markers\t\tCreate unique markers for a given group of sequences.");
     }    
     
   }
