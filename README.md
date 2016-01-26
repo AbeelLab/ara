@@ -1,6 +1,6 @@
-# ARA
-ARA, a fork from Arlin Keo and Thomas Abeel's MACAW2/ARA tool.
-This fork contains an additional tool, unique-markers, which allows a user to identify unique markers for a set of genes.
+# AURA
+AURA, a fork from Arlin Keo and Thomas Abeel's MACAW2/ARA tool.
+The extra 'U' is for the additional tool, unique-markers that is included, which allows a user to identify unique markers for a set of genes.
 
 ## Building
 
