@@ -112,6 +112,9 @@ object MacawSNPtyper extends Tool {
         while (it.hasNext()) {
           val sr = it.next()
 
+          if (sr.getReadPairedFlag()){
+            sr_mate = it.next()
+          }
           val read = sr.getReadBases()
 
           totalCoverage += sr.getReadLength()
