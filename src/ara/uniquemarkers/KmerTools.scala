@@ -5,7 +5,7 @@
  * 
  *****************************************************************************/
 
-package hse
+package ara.uniquemarkers
 
 import Stream._
 
@@ -26,7 +26,7 @@ case class kmerType(seq: String, index: Int) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-object kmerTools {
+object KmerTools {
 /*****************************************************************************
  * Tools to handle kmers.                                                    *
  *****************************************************************************/
@@ -251,7 +251,7 @@ class genomeKmers(fastas: List[Fasta.Entry], k: Int) {
     var kmerCounts = new mutHashMap[String,Int]()
     
     for(fasta <- fastas){
-      val kmerIterator = kmerTools.allKmersStream(fasta.sequence, k).iterator
+      val kmerIterator = KmerTools.allKmersStream(fasta.sequence, k).iterator
       var kmer  = new kmerType("  ", 0)
       var count = 0
       

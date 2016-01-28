@@ -1,6 +1,6 @@
 // Written by Thies Gehrmann thiesgehrmann@gmail.com 2015-2016
 
-package hse
+package ara.uniquemarkers
 
 
 ///////////////////////////////////////////////////////////////////////////////

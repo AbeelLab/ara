@@ -1,6 +1,6 @@
-# AURA
-AURA, a fork from Arlin Keo and Thomas Abeel's MACAW2/ARA tool.
-The extra 'U' is for the additional tool, unique-markers that is included, which allows a user to identify unique markers for a set of genes.
+# ara
+Ara
+=======
 
 ## Building
 
@@ -31,7 +31,5 @@ $>java -jar build/ara.jar unique-markers
 ## Examples
 
 After building, you can run the examples and tests in the `testing/` directory
-
-
 
 

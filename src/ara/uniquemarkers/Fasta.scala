@@ -1,6 +1,6 @@
 // Written by Thies Gehrmann thiesgehrmann@gmail.com 2015-2016
 
-package hse
+package ara.uniquemarkers
 
 import scala.util.parsing.combinator._
 import java.io._

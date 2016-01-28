@@ -5,15 +5,12 @@
  *                                                                            *
  ******************************************************************************/
 
-package UniqueMarkers
+package ara.uniquemarkers
 
-import hse.Fasta
-import hse.kmerType
-import hse.kmerTools
-import hse.Utils
-import hse.genomeKmers
 
-object uniqueMarkers {
+
+
+object UniqueMarkers {
 
   /////////////////////////////////////////////////////////////////////////////
 
@@ -37,16 +34,16 @@ object uniqueMarkers {
     val genomes = inputGenomes.map(Fasta.read);
 
       // Determine the unique kmers for each group of alleles
-    val orthologous_kmers = Utils.suckLessZip(fastas).map( o => kmerTools.orthologUniqueKmers(o, k))
+    val orthologous_kmers = Utils.suckLessZip(fastas).map( o => KmerTools.orthologUniqueKmers(o, k))
       // Create the HashMaps for the genomes
     val genomeKmerCounts  = new genomeKmers(genomes.flatten, k);
 
       // Determine the genome-wide unique markers for each allele
-    val uniqueMarkers = kmerTools.orthologGenomeUniqueKmers(orthologous_kmers, genomeKmerCounts)
+    val uniqueMarkers = KmerTools.orthologGenomeUniqueKmers(orthologous_kmers, genomeKmerCounts)
 
       // Find nonredundant markers.
       // If requested, skip this step
-    val outMarkers = if (redundant) { uniqueMarkers } else { kmerTools.nonRedundantKmers(uniqueMarkers, k) }
+    val outMarkers = if (redundant) { uniqueMarkers } else { KmerTools.nonRedundantKmers(uniqueMarkers, k) }
 
       // Output
     output(outMarkers, inputFastas.length, out_prefix)

@@ -5,7 +5,7 @@ import scala.io.Source
 import java.io.PrintWriter
 
 
-object DrugResistances {
+object DRinterpret {
   
   case class Config(
     val snpTyperOutput: String = null, 

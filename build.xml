@@ -28,8 +28,6 @@
     	
     	<include name="lib/sam-*.jar" />
     	
-    	<include name="lib/scopt_2.11-*.jar" />    	
-
         <include name="lib_compile/scala-2.10.2/scala-library.jar" />
     </fileset>
 
@@ -154,6 +152,7 @@
 
     	  		<include name="hierclusters_global_*" />
     	   		<include name="Coll2015DrugResistances.txt" />
+    			<include name="global_markers_filtered.txt" />
     		    						
     	  	</fileset>
     				
