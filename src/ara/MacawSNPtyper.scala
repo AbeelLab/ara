@@ -39,6 +39,23 @@ object MacawSNPtyper extends Tool {
     2016/01/11:    Removed assertion in output, replaced with warning
     """
 
+  def removeRC(ident: String): String = {
+    if ( ident.take(3) == "RC_") {
+      ident.drop(3)
+    } else {
+      ident
+    }
+  }
+
+  case class StringRC (ident: String) {
+    val norcIdent : String = removeRC(ident);
+    override def equals(o: Any) = o match {
+      case that: StringRC => that.norcIdent.equals(this.norcIdent)
+      case _ => false
+    }
+    override def hashCode = norcIdent.hashCode
+  }
+
   def revcomp(read: Array[Byte]) = {
     val out = Array.ofDim[Byte](read.length)
     for (i <- 0 until read.length) {
@@ -58,7 +75,7 @@ object MacawSNPtyper extends Tool {
       opt[String]("marker") action { (x, c) => c.copy(markerFile = x) } text ("File containing marker sequences. This file has to be a multi-fasta file with the headers indicating the name of the markers.") //, { v: String => config.spacerFile = v })
       opt[String]('o', "output") action { (x, c) => c.copy(outputFile = x) } text ("File where you want the output to be written")
       opt[Int]('t', "threshold") action { (x, c) => c.copy(threshold = x) } text ("Threshold to determine absence or presence of a marker (default=5)")
-      opt[Unit]("paired") action { (_, c) => c.copy(paired = true) } text ("Input files are paired end. (default = false) ")
+      opt[Unit]("paired") action { (_, c) => c.copy(paired = true) } text ("Input files are paired end. input file must be sorted by name. (default = false) ")
       opt[Unit]("detailed") action { (_, c) => c.copy(detailed = true) } text ("Output digital marker types per input file. (default=false) ")
       arg[File]("<file>...") unbounded () required () action { (x, c) => c.copy(files = c.files :+ x) } text ("input files")
 
@@ -113,31 +130,33 @@ object MacawSNPtyper extends Tool {
 
         while (it.hasNext()) {
           val sr = it.next()
-
-          val read = sr.getReadBases()
-                                           
           totalCoverage += sr.getReadLength()
-          
-          val readResult = tree.search(read);
+          val readResult = tree.search(sr.getReadBases());
           var result = readResult
 
-          if (config.paired){
-            // If this read is a paired end read, then get the mate
-            // We need to get the read counts for this one too!
-            val srMate = it.next()
-            if ( sr.getReadName() != srMate.getReadName() ) {
-              println("ERROR: The bamfile " + inputFile + " is NOT SORTED BY NAME. The two reads " + sr.getReadName() + " is followed by different read " + srMate.getReadName() + ".")
-              System.exit(1)
+          val markerIdentifiers = {
+            if (config.paired){
+              // If this read is a paired end read, then get the mate
+              // We need to get the read counts for this one too!
+              val srMate = it.next()
+              if ( sr.getReadName() != srMate.getReadName() ) {
+                println("ERROR: The bamfile " + inputFile + " is NOT SORTED BY NAME. The two reads " + sr.getReadName() + " is followed by different read " + srMate.getReadName() + ".")
+                System.exit(1)
+              }
+              val mateResult = tree.search(srMate.getReadBases())
+              totalCoverage += srMate.getReadLength()
+              result = readResult++mateResult
+  
+              //Get the identifiers of each marker...
+              //Count each identifier ONLY ONCE!!!
+              //Therefore, for paired end reads, we need to remove the RC_blahblah from the marker identifiers
+              result.map( x => x.asInstanceOf[SearchResult].getOutputs.map(y => new StringRC(y.asInstanceOf[String]))).flatten.toSet.map((s : StringRC) => s.ident).toList
+            } else {
+              // if not paired end, then we can ignore all that stuff...
+              result.map( x => x.asInstanceOf[SearchResult].getOutputs.map(y => y.asInstanceOf[String])).flatten
             }
-            val mateResult = tree.search(srMate.getReadBases())
-            totalCoverage += srMate.getReadLength()
-            result = readResult++mateResult
           }
 
-            //Get the identifiers of each marker, I think...
-            //Count each identifier ONLY ONCE!!!
-          val markerIdentifiers : Set[String] = result.map( x => x.asInstanceOf[SearchResult].getOutputs.map(y => y.asInstanceOf[String])).flatten.toSet
-          println(markerIdentifiers)
           for( s <- markerIdentifiers) {
             cm.count(s)
           }
