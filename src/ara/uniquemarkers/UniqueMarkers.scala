@@ -92,7 +92,7 @@ object UniqueMarkers {
 
   def usage(arg0: String): Unit = {
     println("Unique identifier detection")
-    println("Usage: unique-markers  <sequence1>[,sequence2[,...]] <genome1>[,genome2[,...]] <k> <out_prefix> [R]");
+    println("Usage: unique-markers <sequence1>[,sequence2[,...]] <genome1>[,genome2[,...]] <k> <out_prefix> [R]");
     println("  sequences:  Comma seperated list of FASTA files containing gene DNA sequences")
     println("  genomes:    Comma seperated list of FASTA files containing genome DNA sequences")
     println("  k:          The size of kmer to use")
