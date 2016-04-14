@@ -3,7 +3,6 @@ package ara
 import ara.uniquemarkers.UniqueMarkers
 
 
-
 object Console {
   
   def main(args: Array[String]) ={
