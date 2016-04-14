@@ -128,6 +128,7 @@ object Validation extends Tool {
 
       createMixes(config.replicates)
 
+      println("Finished.")
     }
 
   }
