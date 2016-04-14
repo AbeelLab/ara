@@ -17,7 +17,8 @@ object Validation extends Tool {
   case class Config(
     val input: Seq[File] = Seq(),
     val output: String = null,
-    val count: Int = 10000000)
+    val count: Int = 10000000,
+    val probs: Seq[Int] = Seq())
 
   def main(args: Array[String]) {
 
@@ -25,6 +26,7 @@ object Validation extends Tool {
       opt[String]("prefix") required () action { (x, c) => c.copy(output = x) } text ("Output prefix")
       opt[Seq[File]]('f', "files") required () action { (x, c) => c.copy(input = x) } text ("List of input bam files")
       opt[Int]("count") action { (x, c) => c.copy(count = x) } text ("Approx. total number of reads in output. Default=10,000,000 ")
+      opt[Seq[Int]] ('p', "percentages") required () action { (x, c) => c.copy(probs = x) } text ("Percentages of mixes.")
     }
 
     parser.parse(args, Config()) map { config =>
@@ -52,7 +54,7 @@ object Validation extends Tool {
       println("File 1: " + config.input(0) + "\t" + totalReads1)
       println("File 2: " + config.input(1) + "\t" + totalReads2)
 
-      val probSeq = Seq(1,2,5,10,20,30,40,50,60,70,80,90,95,98,99)
+      val probSeq = config.probs
       
       println("Probability table:")
       val probTable = for (i <- probSeq) yield {
