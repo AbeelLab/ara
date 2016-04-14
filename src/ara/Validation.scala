@@ -22,8 +22,8 @@ object Validation extends Tool {
   def main(args: Array[String]) {
 
     val parser = new scopt.OptionParser[Config]("java -jar ara.jar generate-validation") {
-      opt[String]("prefix") action { (x, c) => c.copy(output = x) } text ("Output prefix")
-      opt[Seq[File]]('f', "files") action { (x, c) => c.copy(input = x) } text ("List of input bam files")
+      opt[String]("prefix") required () action { (x, c) => c.copy(output = x) } text ("Output prefix")
+      opt[Seq[File]]('f', "files") required () action { (x, c) => c.copy(input = x) } text ("List of input bam files")
       opt[Int]("count") action { (x, c) => c.copy(count = x) } text ("Approx. total number of reads in output. Default=10,000,000 ")
     }
 
