@@ -62,7 +62,7 @@ object Console {
       println("\tprepare-drmapping\tPrepare slurm script for each sample to detect drug resistance.")
       println("\tprepare-bluejay\t\tPrepare slurm script for hierarchical clusters for SNP-association.")
       println
-      println("\tgenerate-validation\t\tMix pure samples for validation.")
+      println("\tgenerate-validation\tMix pure samples for validation.")
       println("\tunique-markers\t\tCreate unique markers for a given group of sequences.");
     }    
     
