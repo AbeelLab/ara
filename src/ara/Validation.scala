@@ -75,9 +75,10 @@ object Validation extends Tool {
         for (r <- 1 to n) {
           println("-----replicate " + r + "-----")
           val outputs = for (i <- probSeq) yield {
-
+            val fileName = config.output + "." + "r" + r + "." + i 
+            new File(fileName).mkdir()
             val outputSam = new SAMFileWriterFactory().makeSAMOrBAMWriter(sam1.getFileHeader(),
-              false, new File(config.output + "." + "r" + r + "." + i + ".bam"));
+              false, new File(fileName + "/" + fileName + ".bam"));
 
             outputSam
           }
