@@ -18,7 +18,8 @@ object Validation extends Tool {
     val input: Seq[File] = Seq(),
     val output: String = null,
     val count: Int = 10000000,
-    val probs: Seq[Int] = Seq())
+    val probs: Seq[Int] = Seq(),
+    val replicates: Int = 1)
 
   def main(args: Array[String]) {
 
@@ -26,7 +27,8 @@ object Validation extends Tool {
       opt[String]("prefix") required () action { (x, c) => c.copy(output = x) } text ("Output prefix")
       opt[Seq[File]]('f', "files") required () action { (x, c) => c.copy(input = x) } text ("List of input bam files")
       opt[Int]("count") action { (x, c) => c.copy(count = x) } text ("Approx. total number of reads in output. Default=10,000,000 ")
-      opt[Seq[Int]] ('p', "percentages") required () action { (x, c) => c.copy(probs = x) } text ("Percentages of mixes.")
+      opt[Seq[Int]]('p', "percentages") required () action { (x, c) => c.copy(probs = x) } text ("Percentages of mixes.")
+      opt[Int]('r', "replicates") action { (x, c) => c.copy(replicates = x)} text ("Number of replicates. Default=1")
     }
 
     parser.parse(args, Config()) map { config =>
@@ -55,7 +57,7 @@ object Validation extends Tool {
       println("File 2: " + config.input(1) + "\t" + totalReads2)
 
       val probSeq = config.probs
-      
+
       println("Probability table:")
       val probTable = for (i <- probSeq) yield {
         val prob1 = (i / 100.0) * (config.count.toDouble / totalReads1)
@@ -68,54 +70,64 @@ object Validation extends Tool {
 
       }
 
-      val outputs = for (i <- probSeq) yield {
+      def createMixes(n: Int) = {
 
-        val outputSam = new SAMFileWriterFactory().makeSAMOrBAMWriter(sam1.getFileHeader(),
-          false, new File(config.output + "." + i + ".bam"));
-        
-        outputSam
-      }
+        for (r <- 1 to n) {
+          println("-----replicate " + r + "-----")
+          val outputs = for (i <- probSeq) yield {
 
-      val workMatrix = probTable.zip(outputs)
+            val outputSam = new SAMFileWriterFactory().makeSAMOrBAMWriter(sam1.getFileHeader(),
+              false, new File(config.output + "." + "r" + r + "." + i + ".bam"));
 
-      /* Process first file*/
-      var counter = 0
-      val rg = new MersenneTwister
-      println("Processing 1")
-      val it: SAMRecordIterator = sam1.iterator()
+            outputSam
+          }
 
-      while (it.hasNext()) {
-        val record = it.next()
-        counter += 1
-        if (counter % 100000 == 0)
-          print(".")
-        for ((prob, out) <- workMatrix) {
-          val r = rg.nextDouble()
-          if (r <= prob._3)
-            out.addAlignment(record)
+          val workMatrix = probTable.zip(outputs)
+
+          /* Process first file*/
+          var counter = 0
+          val rg = new MersenneTwister
+          println("Processing 1")
+          val it: SAMRecordIterator = sam1.iterator()
+
+          while (it.hasNext()) {
+            val record = it.next()
+            counter += 1
+            if (counter % 100000 == 0)
+              print(".")
+            for ((prob, out) <- workMatrix) {
+              val r = rg.nextDouble()
+              if (r <= prob._3)
+                out.addAlignment(record)
+            }
+          }
+          it.close()
+          println
+          /* Process second file */
+          val it2: SAMRecordIterator = sam2.iterator()
+          println("Processing 2")
+          while (it2.hasNext()) {
+            val record = it2.next()
+            counter += 1
+            if (counter % 100000 == 0)
+              print(".")
+            for ((prob, out) <- workMatrix) {
+              val r = rg.nextDouble()
+              if (r <= prob._4)
+                out.addAlignment(record)
+            }
+          }
+          it2.close()
+          for (oo <- outputs) {
+            println("Closing: " + oo)
+            oo.close
+          }
         }
+
       }
-      it.close()
-      println
-      /* Process second file */
-      val it2: SAMRecordIterator = sam2.iterator()
-      println("Processing 2")
-      while (it2.hasNext()) {
-        val record = it2.next()
-        counter += 1
-        if (counter % 100000 == 0)
-          print(".")
-        for ((prob, out) <- workMatrix) {
-          val r = rg.nextDouble()
-          if (r <= prob._4)
-            out.addAlignment(record)
-        }
-      }
-      it2.close()
-      for (oo <- outputs) {
-        println("Closing: "+oo)
-        oo.close
-      }
+
+      createMixes(config.replicates)
+
     }
 
   }
