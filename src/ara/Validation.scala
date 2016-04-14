@@ -52,19 +52,21 @@ object Validation extends Tool {
       println("File 1: " + config.input(0) + "\t" + totalReads1)
       println("File 2: " + config.input(1) + "\t" + totalReads2)
 
+      val probSeq = Seq(1,2,5,10,20,30,40,50,60,70,80,90,95,98,99)
+      
       println("Probability table:")
-      val probTable = for (i <- 1 to 9) yield {
-        val prob1 = (i / 10.0) * (config.count.toDouble / totalReads1)
+      val probTable = for (i <- probSeq) yield {
+        val prob1 = (i / 100.0) * (config.count.toDouble / totalReads1)
         val estimated1 = prob1 * totalReads1
-        val prob2 = ((10 - i) / 10.0) * (config.count.toDouble / totalReads2)
+        val prob2 = ((100 - i) / 100.0) * (config.count.toDouble / totalReads2)
         val estimated2 = prob2 * totalReads2
-        println(i + "\t" + (10 - i) + "\t" + prob1 + "\t" + prob2 + "\t" + estimated1.toInt + "\t" + estimated2.toInt + "\t" + (estimated1 + estimated2).toInt)
+        println(i + "\t" + (100 - i) + "\t" + prob1 + "\t" + prob2 + "\t" + estimated1.toInt + "\t" + estimated2.toInt + "\t" + (estimated1 + estimated2).toInt)
 
-        ((i, 10 - i, prob1, prob2))
+        ((i, 100 - i, prob1, prob2))
 
       }
 
-      val outputs = for (i <- 1 to 9) yield {
+      val outputs = for (i <- probSeq) yield {
 
         val outputSam = new SAMFileWriterFactory().makeSAMOrBAMWriter(sam1.getFileHeader(),
           false, new File(config.output + "." + i + ".bam"));
