@@ -54,13 +54,15 @@ object Console {
       //println("\tdr-markers\t\tCreate 21bp markers from a list with known TB drug resistance mutations.")
       println("\thier-clusters\t\tHierarchical clusters of tree, given lineage information.")
       println("\tbj-markers\t\tConvert cluster associated SNPs from BlueJay tsv-files to 21 bp markers, given a reference genome.")
-      println("\tall-bj-markers\t\tCombine multiple marker files into one.")
+      //println("\tall-bj-markers\t\tCombine multiple marker files into one.")
       println("\tref-DR-region\t\tCreate minimized version of reference genome containing known DR-regions.")
       println("\tdr-snps\t\t\tRead drug resistance region VCF file.")
       println
       println("\tprepare-ara\t\tPrepare sbatch scripts to run Ara.")
       println("\tprepare-drmapping\tPrepare slurm script for each sample to detect drug resistance.")
       println("\tprepare-bluejay\t\tPrepare slurm script for hierarchical clusters for SNP-association.")
+      println
+      println("\tgenerate-validation\t\tMix pure samples for validation.")
       println("\tunique-markers\t\tCreate unique markers for a given group of sequences.");
     }    
     
