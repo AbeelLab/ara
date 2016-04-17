@@ -20,25 +20,14 @@ object PrepareAra {
 
       //var count = 0
       
-      /*val jpw1 = new PrintWriter(new File(dir.getPath + "/ara-snptyper.sh"))
+      val jpw1 = new PrintWriter(new File(dir.getPath + "/ara-snptyper.sh"))
       jpw1.println("#!/bin/bash")
-      jpw1.println("#SBATCH --job-name=ara-snptyper")
-      jpw1.println("#SBATCH --workdir=" + dir)
-      jpw1.println("#SBATCH --partition=long --qos=long")
-      jpw1.println("#SBATCH --output=ara-snptyper.out")
-      jpw1.println*/
-      
-      /*val jpw2 = new PrintWriter(new File(dir.getPath + "/ara-interpreter.sh"))
+      val jpw2 = new PrintWriter(new File(dir.getPath + "/ara-interpreter.sh"))
       jpw2.println("#!/bin/bash")
-      jpw2.println("#SBATCH --job-name=ara-interpreter")
-      jpw2.println("#SBATCH --workdir=" + dir)
-      jpw2.println("#SBATCH --partition=long --qos=long")
-      jpw2.println("#SBATCH --output=ara-interpreter.out")
-      jpw2.println*/
 
       samples.foreach { s =>
         val name = s.getName
-        val bams = s.listFiles().filter(f => f.getName.endsWith("sorted.bam") && !f.getName.contains("dr-region")).map(_.getName)
+        val bams = s.listFiles().filter(f => f.getName.endsWith(".bam") && !f.getName.contains("dr-region")).map(_.getName)
 
         if (!bams.isEmpty) {
           
@@ -47,7 +36,7 @@ object PrepareAra {
           }*/
           
           /** SNP-typer sbatch job */
-          /*val pw1 = new PrintWriter(new File(s.getPath + "/" + name + ".ara-snptyper.sh"))
+          val pw1 = new PrintWriter(new File(s.getPath + "/" + name + ".ara-snptyper.sh"))
           pw1.println("#!/bin/bash")
           pw1.println("#SBATCH --job-name=ara-snptyper-" + name)
           pw1.println("#SBATCH --workdir=" + s)
@@ -56,7 +45,7 @@ object PrepareAra {
           pw1.println("#SBATCH --output=ara-snptyper.out")
           pw1.println
           pw1.println("java -Xmx3g -jar /tudelft.net/staff-bulk/ewi/insy/DBL/Arlin/ara-development/ara.jar snp-typer -o " + name + " " + bams.mkString(" "))
-          pw1.close*/
+          pw1.close
 
           /** Ara interpreter sbatch job */
           val pw2 = new PrintWriter(new File(s.getPath + "/" + name + ".ara-interpreter.sh"))
@@ -71,16 +60,15 @@ object PrepareAra {
           
           pw2.close
           
-          //jpw1.println("sbatch " + name + "/" + name + ".ara-snptyper.sh")
-          //jpw2.println("sbatch " + name + "/" + name + ".ara-interpreter.sh")
+          jpw1.println("sbatch " + name + "/" + name + ".ara-snptyper.sh")
+          jpw2.println("sbatch " + name + "/" + name + ".ara-interpreter.sh")
           
           //count = count + 1
         }
 
       }
-
-      //jpw1.close
-      //jpw2.close
+      jpw1.close
+      jpw2.close
 
     }
   }
