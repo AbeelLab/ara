@@ -133,27 +133,6 @@ object HierClusters {
           println("\texcluded: " + c0.mkString(", "))
         }
         
-        /** Print hierarchical clusters to file if both groups are defined as hierarchical clusters (size > 10).*/        
-        /**if (child1.numberLeaves >= 10 && child2.numberLeaves >= 10) {
-          val samples = t.getLeaves(child1).map(_.getName) ++ t.getLeaves(child2).map(_.getName).toList
-          val clusters = samples.map{s => 
-            val c = hc(s)
-            val cName = if (c.last.contains("-")) c.last else c.filterNot(_.contains("-")).mkString(".")
-            (s, cName)
-          }.groupBy(_._2).mapValues(s => s.map(_._1))          
-          val cpw = new PrintWriter(new File(config.out + "/" + clusters.keys.mkString("_") + "_clusters"))
-          cpw.println("# Hierarchical clusters ")
-          cpw.println("# " + clusters.map(_ match { case (c, ls) => (c + "(N=" + ls.size + ")")}).mkString("\n# "))
-          cpw.println("# Command: java -jar ara.jar hier-clusters " + args.mkString(" "))
-          cpw.println("# Compiled: " + Calendar.getInstance.getTime)
-          clusters.foreach{ _ match 
-            {
-              case (c, ls) => ls.foreach(s => cpw.println(s + "\t" + c))
-            }            
-          }
-          cpw.close
-        }*/
-
         /** Recursive call */
         if (child1.numberLeaves > 19) { readRecursive(child1, lvl + 1) }
         if (child2.numberLeaves > 19) { readRecursive(child2, lvl + 1) }
