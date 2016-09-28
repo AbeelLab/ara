@@ -1,4 +1,4 @@
-package ara
+package ara.supplemental
 
 import scala.io.Source
 import java.io.File

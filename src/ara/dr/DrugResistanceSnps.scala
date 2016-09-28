@@ -1,15 +1,17 @@
-package ara
+package ara.dr
 
 import java.io.File
 import java.io.PrintWriter
-import scala.io.Source
-import ara.DRsnp._
 import atk.compbio.gff._
 import atk.util.Tool
-import ara.DRVcfLine._
-import java.nio.charset.Charset
+import ara.dr.DRVcfLine
+import ara.dr.DRsnp._
 import java.nio.charset.CodingErrorAction
 import scala.io.Codec
+import ara.CodonConfig
+import ara.MacawSNPtyper
+import scala.io.Codec.decoder2codec
+import ara.dr.DRVcfLine
 
 /**
  *  Read VCF-files of samples mapped against a minimized reference genome,

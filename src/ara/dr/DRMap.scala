@@ -1,10 +1,11 @@
-package ara
+package ara.dr
 
 import scala.io.Source
 import java.io.File
 import java.io.PrintWriter
 import ara.Gene._
-import ara.DRsnp._
+import ara.dr.DRsnp._
+import ara.Gene
 
 /**
  * Create minimized version of reference genome H37Rv that consists of genes and their flanking regions containing drug resistances from the list.

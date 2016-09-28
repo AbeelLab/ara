@@ -1,6 +1,11 @@
 package ara
 
 import ara.uniquemarkers.UniqueMarkers
+import ara.supplemental.PrepareAra
+import ara.supplemental.PrepareBlueJay
+import ara.supplemental.PrepareDRMapping
+import ara.dr.DrugResistanceSnps
+import ara.dr.DRMap
 
 
 object Console {

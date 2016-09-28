@@ -1,4 +1,4 @@
-package ara
+package ara.dr
 
 /**
  * Read drug resistance SNP from Coll2015

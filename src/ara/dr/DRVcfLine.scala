@@ -1,4 +1,4 @@
-package ara
+package ara.dr
 
 /**
  * Lines in VCF file of samples mapped against minimized reference genome

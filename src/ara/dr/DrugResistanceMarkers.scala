@@ -1,10 +1,12 @@
-package ara
+package ara.dr
 
 import scala.io.Source
 import java.io.File
 import java.io.PrintWriter
 import ara.Gene._
 import java.util.Calendar
+import ara.CodonConfig
+import ara.Gene
 
 /**
  * Reads only SNPs from drug resistance list, and produces markers

@@ -1,8 +1,10 @@
-package ara
+package ara.dr
 
 import java.io.File
 import scala.io.Source
 import java.io.PrintWriter
+import ara.DrugMarker
+import ara.Marker
 
 
 object DRinterpret {
